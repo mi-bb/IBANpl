@@ -1,0 +1,5 @@
+#!/bin/sh
+
+PDIR=`dirname "$0"`
+cd ${PDIR}
+exec python3 -O iban.py "$@"

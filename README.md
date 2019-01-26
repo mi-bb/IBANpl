@@ -1,0 +1,41 @@
+# IBANPL
+
+Informacja o polskich bankach na podstawie numeru konta IBAN
+
+Program oraz funkcje pozwalające na sprawdzenie poprawności numeru
+konta oraz wyświetlenie informacji o polskich bankach
+(nazwa banku, adres i inne dane) na podsawie numeru konta IBAN.
+Informacje o bankach można aktualizować. Aktualne dane pobierane są
+ze strony NBP i zapisywane w bazie danych.
+
+Program korzysta z bazy danych SQLite.
+
+# Wymagania
+
+ * Python 3
+ * GTK+ 3
+ * SQLite 3
+
+OS:
+ * Linux
+ * Windows
+
+[Strona programu na GitHub](https://michalb1981.github.io/ibanpl/)
+
+# Copyright and license
+
+Copyright (C) 2016 Michal Babik
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
