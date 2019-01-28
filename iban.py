@@ -7,6 +7,7 @@
 #     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/   
 #                                                                
 #    Copyright (C) 2016-2019 Michal Babik
+#
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -30,49 +31,49 @@ from ibanpl import sql_get_all_bank_no, sql_get_all_jorg, \
 class AppWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
-        self.set_title("IBANPL v1.0")
+        self.set_title("IBANpl v1.0")
         self.set_position(Gtk.WindowPosition.CENTER)
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        hbox1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        img = Gtk.Image.new_from_icon_name("gtk-home", Gtk.IconSize.DIALOG)
-        img.set_padding(8, 8)
-        hbox1.pack_start(img, False, True, 0)
-        lab = Gtk.Label("Wybierz numery banku i jednostki organizacyjnej")
-        lab.set_padding(8, 8)
-        hbox1.pack_start(lab, True, True, 0)
-        vbox1.pack_start(hbox1, False, True, 0)
+        lab = Gtk.Label()
+        lab.set_label("Wybierz numery banku i jednostki organizacyjnej")
+        lab.set_margin_start(8);
+        lab.set_margin_end(8);
+        vbox1.pack_start(lab, False, True, 8)
         lab = Gtk.Label()
         lab.set_markup("XX <span foreground=\"magenta\">XXXX</span> "
             "<span foreground=\"blue\">XXXX</span> XXXX XXXX XXXX XXXX")
-        vbox1.pack_start(lab, False, True, 0)
+        vbox1.pack_start(lab, False, True, 8)
         hbox2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.cbox1 = Gtk.ComboBoxText()
         self.cbox2 = Gtk.ComboBoxText()
         but1 = Gtk.Button.new_with_label("Uaktualnij Bazę")
         but1.connect("clicked", self.bank_list_update)
-        hbox2.pack_start(self.cbox1, True, True, 8)
+        hbox2.pack_start(self.cbox1, True, True, 4)
         hbox2.pack_start(self.cbox2, True, True, 0)
-        hbox2.pack_start(but1, False, True, 8)
-        vbox1.pack_start(hbox2, False, True, 0)
-        lab = Gtk.Label("Lub wpisz numer konta:")
+        hbox2.pack_start(but1, False, True, 4)
+        vbox1.pack_start(hbox2, False, True, 8)
+        lab = Gtk.Label()
+        lab.set_label("Lub wpisz numer konta:")
         vbox1.pack_start(lab, False, True, 8)
         self.iban_entry = Gtk.Entry()
         self.iban_entry.set_tooltip_text("Wpisz ręcznie numer kona aby "
                 "pokazać\ninformacje o banku i zweryfikować jego "
                 "poprawność.\nAby działał wybór numerów z list to "
                 "pole musi być puste")
-        vbox1.pack_start(self.iban_entry, False, True, 4)
-        self.iban_corr = Gtk.Label("")
-        vbox1.pack_start(self.iban_corr, False, True, 4)
+        vbox1.pack_start(self.iban_entry, False, True, 8)
+        self.iban_corr = Gtk.Label()
+        vbox1.pack_start(self.iban_corr, False, True, 8)
         fr1 = Gtk.Frame(label="Informacje o banku :")
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_padding(5, 10, 10, 10)
+        alg1.set_margin_start(10);
+        alg1.set_margin_end(10);
         grid1 = Gtk.Grid()
         alg1.add(grid1)
         fr1.add(alg1)
         vbox1.pack_start(fr1, True, True, 8)
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_padding(8, 8, 8, 8)
+        alg1.set_margin_start(8);
+        alg1.set_margin_end(8);
         alg1.add(vbox1)
         self.add(alg1)
         self.lab_list1 = []
@@ -80,7 +81,9 @@ class AppWindow(Gtk.Window):
         l_lab = ["Nazwa:", "Nazwa handlowa:"]
         for i, v in enumerate(l_lab):
             self.lab_list1.append(Gtk.Label())
-            grid1.attach(Gtk.Label(v), 0, i, 1, 1)
+            lb = Gtk.Label()
+            lb.set_label(v)
+            grid1.attach(lb, 0, i, 1, 1)
             grid1.attach(self.lab_list1[i], 1, i, 1, 1)
         l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:", 
                 "Poczta:", "Skr poczt.:", "Tel:", "Fax:", "Rozp. dział.:",
@@ -88,8 +91,10 @@ class AppWindow(Gtk.Window):
                 "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:", 
                 "Nr rozl jedn nadrz:"]
         for i, v in enumerate(l_lab):
+            lb = Gtk.Label()
+            lb.set_label(v)
             self.lab_list2.append(Gtk.Label())
-            grid1.attach(Gtk.Label(v), 0, i+2, 1, 1)
+            grid1.attach(lb, 0, i+2, 1, 1)
             grid1.attach(self.lab_list2[i], 1, i+2, 1, 1)
 
         self.clear_fields_jorg()

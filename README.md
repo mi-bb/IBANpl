@@ -1,4 +1,4 @@
-# IBANPL
+# IBANpl
 
 Informacja o polskich bankach na podstawie numeru konta IBAN
 
