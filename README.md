@@ -22,7 +22,7 @@ OS:
 # Aktualizacja bazy danych banków
 
 Należy wejść na stronę https://ewib.nbp.pl/
-Przejść do zakładki *Dane do pobrania* i pobrać plik _**plewibnra.txt**_.
+Przejść do zakładki _**Dane do pobrania**_ i pobrać plik _**plewibnra.txt**_.
 Plik _**plewibnra.txt**_ nalezy skopiować do katalogu programu.
 Po uruchomieniu programu kliknąć przycisk _**Uaktualnij bazę**_.
 
