@@ -28,8 +28,8 @@ import sqlite3
 import shelve
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+from datetime import date
 #-----------------------------------------------------------------------------#
-uurl = 'http://www.nbp.pl/banki_w_polsce/ewidencja/dz_bank_jorg.txt'
 DB_FILE_NAME = 'bn_base.db'
 #-----------------------------------------------------------------------------#
 def iban_letter2num(letter):
@@ -182,29 +182,9 @@ def sql_get_bank_info_frmt(num):
                 if d: ret2 = d[0]
     return True, ret1, ret2, ''
 #-----------------------------------------------------------------------------#
-def get_url_response(url):
-    """Check if url responses"""
-    req = Request(url)
-    try:
-        response = urlopen(req)
-    except URLError as e:
-        if hasattr(e, 'reason'):
-            print('We failed to reach a server.')
-            print('Reason: ', e.reason)
-        elif hasattr(e, 'code'):
-            print('The server couldn\'t fulfill the request.')
-            print('Error code: ', e.code)
-        return None
-    else:
-        return response
-    return None
-#-----------------------------------------------------------------------------#
-def get_url_file_date(url):
-    """Get last modified data of url"""
-    ret = ''
-    resp = get_url_response(url)
-    if resp: ret = resp.headers['last-modified']
-    return ret
+def get_date_today():
+    today = date.today()
+    return today.isoformat()
 #-----------------------------------------------------------------------------#
 def sql_get_all_bank_no():
     """Get all bank numbers"""
@@ -222,7 +202,7 @@ def sql_get_all_jorg(bid):
 def chk_avail_update():
     """Check if bank base on web is newer than in local DB"""
     idd = 1
-    dt = get_url_file_date(uurl)
+    dt = get_date_today() 
     if dt != '':
         r, d = sql_command_get(
             """select date_m from date_mod where id=?""", (idd,))
@@ -240,7 +220,7 @@ def bank_b_iterator(bdict):
 #-----------------------------------------------------------------------------#
 def bank_j_iterator(cont, bdict):
     """Iterating through unit info"""
-    l = cont.readline().decode("cp852").split("\t")
+    l = cont.readline().split("\t")
     while (len(l) > 1):
         i = int(l[4][0:4])
         bdict[i] = l[1].strip(), l[2].strip()
@@ -248,7 +228,7 @@ def bank_j_iterator(cont, bdict):
         dt = [a, i]
         dt.extend(l[i].strip() for i in range(5,32))
         yield tuple(dt)
-        l = cont.readline().decode("cp852").split("\t")
+        l = cont.readline().split("\t")
 #-----------------------------------------------------------------------------#
 def sql_upd_many(cmd, i_iter):
     """Update many items using iterators"""
@@ -271,37 +251,50 @@ def sql_upd_many(cmd, i_iter):
         if con: con.close()
     return ret
 #-----------------------------------------------------------------------------#
+def bank_base_update(f):
+    r, d = sql_command_save("""delete from jorg""")
+    if not r: return r, d
+    r, d = sql_command_save("""delete from bank""")
+    if not r: return r, d
+    #r, d = sql_command_save("""vacuum""")
+    #if not r: return r, d
+    bd = {}
+    jit = bank_j_iterator(f, bd)
+    r, d = sql_upd_many(
+        """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
+           ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
+    if not r: return r, d
+    bit = bank_b_iterator(bd)
+    r, d = sql_upd_many(
+        """insert into bank values (?,?,?)""", bit)
+    if not r: return r, d
+    # updating date
+    r, d = sql_command_save("""delete from date_mod""")
+    if not r: return r, d
+    dat = get_date_today()
+    #dat = response.headers['last-modified']
+    r, d = sql_command_save(
+        """insert or replace into date_mod values (?,?)""",
+        (1, dat))
+    if not r: return r, d
+    return True, ''
+#-----------------------------------------------------------------------------#
 def bank_list_update():
     """Updating bank list database"""
     ret = False, 'Error occurred'
-    response = get_url_response(uurl)
-    if response:
-        # everything is fine
-        r, d = sql_command_save("""delete from jorg""")
-        if not r: return r, d
-        r, d = sql_command_save("""delete from bank""")
-        if not r: return r, d
-        #r, d = sql_command_save("""vacuum""")
-        #if not r: return r, d
-        bd = {}
-        jit = bank_j_iterator(response, bd)
-        r, d = sql_upd_many(
-            """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
-               ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
-        if not r: return r, d
-        bit = bank_b_iterator(bd)
-        r, d = sql_upd_many(
-            """insert into bank values (?,?,?)""", bit)
-        if not r: return r, d
-        # updating date
-        r, d = sql_command_save("""delete from date_mod""")
-        if not r: return r, d
-        dat = response.headers['last-modified']
-        r, d = sql_command_save(
-            """insert or replace into date_mod values (?,?)""",
-            (1, dat))
-        if not r: return r, d
+    #response = get_url_response(uurl)
+    response = False
+    try:
+        f = open('plewibnra.txt', mode='r', encoding = "cp852")
+        try:
+            bank_base_update(f)
+        finally:
+            f.close()
+    except IOError:
+        ret = False, 'Could not open file'
+    else:
         ret = True, ''
+
     return ret
 #-----------------------------------------------------------------------------#
 def bank_update():
@@ -311,7 +304,7 @@ def bank_update():
         if r:
             print('uaktualniona lista')
         else:
-            print('blad przy aktualozacji', d)
+            print('blad przy aktualizacji', d)
     else:
         print('lista aktualna')
 
