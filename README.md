@@ -5,7 +5,6 @@ Informacja o polskich bankach na podstawie numeru konta IBAN
 Program oraz funkcje pozwalające na sprawdzenie poprawności numeru
 konta oraz wyświetlenie informacji o polskich bankach
 (nazwa banku, adres i inne dane) na podsawie numeru konta IBAN.
-Chwilowo nie działa aktualizacja bazy danych ze strony NBP.
 
 Program korzysta z bazy danych SQLite.
 
