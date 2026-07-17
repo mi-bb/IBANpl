@@ -206,6 +206,10 @@ class AppWindow(Gtk.Window):
                 infodial(
                     self,
                     'Informacje o bankach zostały pomyślnie uaktualnione.')
+            else:
+                infodial(
+                    self,
+                    'Nie udało się zaktualizować informacji o bankach:\n' + d)
         return
 
 #-----------------------------------------------------------------------------#
