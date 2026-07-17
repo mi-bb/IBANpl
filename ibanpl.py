@@ -26,11 +26,13 @@
 #-----------------------------------------------------------------------------#
 import sqlite3
 import shelve
+import io
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 from datetime import date
 #-----------------------------------------------------------------------------#
 DB_FILE_NAME = 'bn_base.db'
+BANK_LIST_URL = 'https://ewib.nbp.pl/plewibnra?dokNazwa=plewibnra.txt'
 #-----------------------------------------------------------------------------#
 def iban_letter2num(letter):
     return str(ord(letter) - ord('A') + 10)
@@ -272,30 +274,28 @@ def bank_base_update(f):
     r, d = sql_command_save("""delete from date_mod""")
     if not r: return r, d
     dat = get_date_today()
-    #dat = response.headers['last-modified']
     r, d = sql_command_save(
         """insert or replace into date_mod values (?,?)""",
         (1, dat))
     if not r: return r, d
     return True, ''
 #-----------------------------------------------------------------------------#
-def bank_list_update():
-    """Updating bank list database"""
-    ret = False, 'Error occurred'
-    #response = get_url_response(uurl)
-    response = False
+def bank_list_download():
+    """Download bank list file from NBP eWIB"""
     try:
-        f = open('plewibnra.txt', mode='r', encoding = "cp852")
-        try:
-            bank_base_update(f)
-        finally:
-            f.close()
-    except IOError:
-        ret = False, 'Could not open file'
-    else:
-        ret = True, ''
-
-    return ret
+        with urlopen(Request(BANK_LIST_URL), timeout=30) as response:
+            data = response.read()
+    except URLError as e:
+        return False, 'Nie udało się pobrać danych: {0}'.format(e)
+    return True, data.decode('cp852')
+#-----------------------------------------------------------------------------#
+def bank_list_update():
+    """Updating bank list database from NBP eWIB"""
+    r, d = bank_list_download()
+    if not r: return r, d
+    r, d = bank_base_update(io.StringIO(d))
+    if not r: return r, d
+    return True, ''
 #-----------------------------------------------------------------------------#
 def bank_update():
     ret = chk_avail_update()
