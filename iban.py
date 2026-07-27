@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 -*-
-#
 #         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/
 #          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/
 #         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/
@@ -23,9 +21,9 @@
 #-----------------------------------------------------------------------------#
 import gi
 from gi.repository import Gtk, GdkPixbuf
-from ibanpl import sql_get_all_bank_no, sql_get_all_jorg, \
-                   chk_avail_update, bank_list_update, chk_iban, \
-                   sql_get_bank_info_frmt
+from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
+                   chk_avail_update, bank_list_update, chk_iban,
+                   sql_get_bank_info_frmt)
 #-----------------------------------------------------------------------------#
 class AppWindow(Gtk.Window):
     def __init__(self):
@@ -112,12 +110,10 @@ class AppWindow(Gtk.Window):
 
     def combo1_change(self, combox):
         self.refr_jorg_list()
-        return
 
     def combo2_change(self, combox):
         if self.iban_entry.get_text() == '':
             self.refr_bank_info()
-        return
 
     def entry_change(self, gtkentry):
         acc = gtkentry.get_text()
@@ -136,7 +132,6 @@ class AppWindow(Gtk.Window):
         else:
             st = '<span foreground=\"red\">'
         self.iban_corr.set_markup(st + d + '</span>')
-        return
 
     def refr_bank_list(self):
         self.cbox1.remove_all()
@@ -144,7 +139,6 @@ class AppWindow(Gtk.Window):
         for i in d:
             self.cbox1.append_text(str(i[0]))
         self.cbox1.set_active(0)
-        return
 
     def refr_jorg_list(self):
         self.cbox2.remove_all()
@@ -156,7 +150,6 @@ class AppWindow(Gtk.Window):
                 t = '0' + t
             self.cbox2.append_text(t)
         self.cbox2.set_active(0)
-        return
 
     def refr_bank_info(self, accno=None):
         if not accno: # from comboboxes
@@ -179,19 +172,16 @@ class AppWindow(Gtk.Window):
                     e.set_text(str(d2[i]))
             else:
                 self.clear_fields_jorg()
-        return
 
     def clear_fields_bank(self):
         """Clears bank data fields"""
         for e in self.lab_list1:
             e.set_text("")
-        return
 
     def clear_fields_jorg(self):
         """Clears jorg data fields"""
         for e in self.lab_list2:
             e.set_text("")
-        return
 
     def bank_list_update(self, widget):
         """Updating bank data information"""
@@ -217,7 +207,6 @@ class AppWindow(Gtk.Window):
                 infodial(
                     self,
                     'Nie udało się zaktualizować informacji o bankach:\n' + d)
-        return
 
 #-----------------------------------------------------------------------------#
 def questdial(widget, t):
