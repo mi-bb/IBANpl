@@ -1,11 +1,11 @@
 # -*- coding: UTF-8 -*-
-#                                                                  
-#         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/     
-#          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/      
-#         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/       
-#        _/    _/    _/  _/    _/  _/    _/_/  _/        _/        
-#     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/   
-#                                                                
+#
+#         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/
+#          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/
+#         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/
+#        _/    _/    _/  _/    _/  _/    _/_/  _/        _/
+#     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/
+#
 #    Copyright (C) 2016-2019 Michal Babik
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
 import gi
-gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GdkPixbuf
 from ibanpl import sql_get_all_bank_no, sql_get_all_jorg, \
                    chk_avail_update, bank_list_update, chk_iban, \
@@ -36,8 +35,8 @@ class AppWindow(Gtk.Window):
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lab = Gtk.Label()
         lab.set_label("Wybierz numery banku i jednostki organizacyjnej")
-        lab.set_margin_start(8);
-        lab.set_margin_end(8);
+        lab.set_margin_start(8)
+        lab.set_margin_end(8)
         vbox1.pack_start(lab, False, True, 8)
         lab = Gtk.Label()
         lab.set_markup("XX <span foreground=\"magenta\">XXXX</span> "
@@ -65,15 +64,15 @@ class AppWindow(Gtk.Window):
         vbox1.pack_start(self.iban_corr, False, True, 8)
         fr1 = Gtk.Frame(label="Informacje o banku :")
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_margin_start(10);
-        alg1.set_margin_end(10);
+        alg1.set_margin_start(10)
+        alg1.set_margin_end(10)
         grid1 = Gtk.Grid()
         alg1.add(grid1)
         fr1.add(alg1)
         vbox1.pack_start(fr1, True, True, 8)
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_margin_start(8);
-        alg1.set_margin_end(8);
+        alg1.set_margin_start(8)
+        alg1.set_margin_end(8)
         alg1.add(vbox1)
         self.add(alg1)
         self.lab_list1 = []
@@ -85,10 +84,10 @@ class AppWindow(Gtk.Window):
             lb.set_label(v)
             grid1.attach(lb, 0, i, 1, 1)
             grid1.attach(self.lab_list1[i], 1, i, 1, 1)
-        l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:", 
+        l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:",
                 "Poczta:", "Skr poczt.:", "Tel:", "Fax:", "Rozp. dział.:",
                 "BIC:", "BIC SEPA:", "www", "Woj./Powiat:", "Adr. kor.:",
-                "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:", 
+                "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:",
                 "Nr rozl jedn nadrz:"]
         for i, v in enumerate(l_lab):
             lb = Gtk.Label()
@@ -116,30 +115,34 @@ class AppWindow(Gtk.Window):
         return
 
     def combo2_change(self, combox):
-        if self.iban_entry.get_text() == '': self.refr_bank_info()
+        if self.iban_entry.get_text() == '':
+            self.refr_bank_info()
         return
 
     def entry_change(self, gtkentry):
         acc = gtkentry.get_text()
-        if acc == '': 
+        if acc == '':
             self.iban_corr.set_text('')
             return
         acc = acc.replace(' ','')
         acc = acc.replace('-','')
-        if len(acc) > 5: self.refr_bank_info(acc[2:])
+        if len(acc) > 5:
+            self.refr_bank_info(acc[2:])
         r, d, acno = chk_iban(acc)
         st = ''
         if r:
             st = '<span foreground=\"green\">'
             gtkentry.set_text(acno)
-        else: st = '<span foreground=\"red\">'
+        else:
+            st = '<span foreground=\"red\">'
         self.iban_corr.set_markup(st + d + '</span>')
         return
 
     def refr_bank_list(self):
         self.cbox1.remove_all()
         r, d = sql_get_all_bank_no()
-        for i in d: self.cbox1.append_text(str(i[0]))
+        for i in d:
+            self.cbox1.append_text(str(i[0]))
         self.cbox1.set_active(0)
         return
 
@@ -149,7 +152,8 @@ class AppWindow(Gtk.Window):
         r, d = sql_get_all_jorg(int(ct))
         for i in d:
             t = str(i[0])
-            while len(t) < 4: t = '0' + t
+            while len(t) < 4:
+                t = '0' + t
             self.cbox2.append_text(t)
         self.cbox2.set_active(0)
         return
@@ -158,7 +162,8 @@ class AppWindow(Gtk.Window):
         if not accno: # from comboboxes
             acc1 = self.cbox1.get_active_text()
             acc2 = self.cbox2.get_active_text()
-            if not acc1 or not acc2: return
+            if not acc1 or not acc2:
+                return
             accno = acc1 + acc2
             self.iban_corr.set_text('')
 
@@ -178,12 +183,14 @@ class AppWindow(Gtk.Window):
 
     def clear_fields_bank(self):
         """Clears bank data fields"""
-        for e in self.lab_list1: e.set_text("")
+        for e in self.lab_list1:
+            e.set_text("")
         return
 
     def clear_fields_jorg(self):
         """Clears jorg data fields"""
-        for e in self.lab_list2: e.set_text("")
+        for e in self.lab_list2:
+            e.set_text("")
         return
 
     def bank_list_update(self, widget):
@@ -194,7 +201,7 @@ class AppWindow(Gtk.Window):
                 self,
                 'Nie potrzeba aktualizacji,\n'
                 'informacje o bankach z dnia\n' +
-                oldd + 
+                oldd +
                 '\nsą aktualne.')
         elif questdial(
                 self,
@@ -216,20 +223,21 @@ class AppWindow(Gtk.Window):
 def questdial(widget, t):
     res = False
     md = Gtk.MessageDialog(widget,
-                           Gtk.DialogFlags.MODAL | 
+                           Gtk.DialogFlags.MODAL |
                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                            Gtk.MessageType.QUESTION,
                            Gtk.ButtonsType.YES_NO,
                            t)
     md.set_title('Question')
     r = md.run()
-    if r == Gtk.ResponseType.YES: res = True
+    if r == Gtk.ResponseType.YES:
+        res = True
     md.destroy()
     return res
 #-----------------------------------------------------------------------------#
 def infodial(widget, t):
     md = Gtk.MessageDialog(widget,
-                           Gtk.DialogFlags.MODAL | 
+                           Gtk.DialogFlags.MODAL |
                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                            Gtk.MessageType.INFO,
                            Gtk.ButtonsType.OK,
@@ -242,4 +250,3 @@ if __name__ == "__main__":
     win = AppWindow()
     win.show_all()
     Gtk.main()
-
