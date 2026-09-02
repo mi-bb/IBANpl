@@ -5,7 +5,7 @@ Wszystkie istotne zmiany w tym projekcie będą dokumentowane w tym pliku.
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/),
 a projekt przestrzega [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1] - 2026-07-17
+## [1.1] - 2026-09-02
 
 ### Dodane
 
