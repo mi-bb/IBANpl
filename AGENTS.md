@@ -15,6 +15,7 @@ GTK+ 3 desktop app (Python 3) that validates Polish IBAN account numbers and sho
 - `ibanpl.py` — all logic, no GTK: `chk_iban()` (mod-97 checksum, prepends `PL`), the SQLite access layer, and the bank-list import from NBP. It mirrors pyfaktury's `fk/banknum.py` — keep the two in sync when either changes. **Exception:** the gettext setup and `_()`-wrapping of messages exist only here so far — pyfaktury is expected to get its own i18n later (this version is the reference); until then the files are not literally identical. `run_sql_command()` and `get_url_response()` are inlined copies of pyfaktury's `fk/sql_common.py` / `fk/sfun.py` (this repo has no package layout).
 - `iban.py` — GTK UI (`AppWindow`), imports only from `ibanpl`. Keep the logic/UI split.
 - `sql_get_all_bank_no()` / `sql_get_all_jorg(bid)` exist only here (the UI's comboboxes need them); pyfaktury's banknum has no equivalents.
+- Bank/branch data is serialized through the `BankInfo` and `JorgInfo` dataclasses (mirrored in pyfaktury's `fk/banknum.py` — keep in sync): `from_row()`/`to_row()` convert between objects and DB rows, `JorgInfo.from_line()` parses a plewibnra.txt line, `JorgInfo.frmt_row()` renders the display values the UI shows. `bank_j_iterator`/`bank_b_iterator` yield the objects and `bank_base_update` writes them via `to_row()`; `sql_get_bank_info_frmt(num)` returns `(BankInfo | None, JorgInfo | None, error)`.
 
 ## Conventions that will bite you
 

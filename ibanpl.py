@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 -*-
-#                                                                  
 #         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/     
 #          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/      
 #         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/       
@@ -29,6 +27,7 @@ import io
 import gettext
 import logging
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import astuple, dataclass
 from sqlite3 import Connection
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -44,6 +43,105 @@ UPD_URL = "https://ewib.nbp.pl/plewibnra?dokNazwa=plewibnra.txt"
 UPD_TIMEOUT = 30
 MIN_BANK_RECORDS = 100
 BANK_DB_FILE_NAME = "bn_base.db"
+#-----------------------------------------------------------------------------#
+@dataclass
+class BankInfo:
+    """Bank record of the `bank` table, used to serialize bank data
+    when reading from and writing to the database.
+
+    Mirrored in pyfaktury's fk/banknum.py -- keep in sync.
+    """
+    id: int
+    bank_name: str
+    bank_tname: str
+#-----------------------------------------------------------------------------#
+    @classmethod
+    def from_row(cls, row: tuple) -> "BankInfo":
+        """Create object from a `bank` table row"""
+        return cls(row[0], row[1], row[2])
+#-----------------------------------------------------------------------------#
+    def to_row(self) -> tuple:
+        """Convert object to a `bank` table row"""
+        return (self.id, self.bank_name, self.bank_tname)
+#-----------------------------------------------------------------------------#
+@dataclass
+class JorgInfo:
+    """Bank branch (jednostka organizacyjna) record of the `jorg` table,
+    used to serialize branch data when reading from and writing to the
+    database. Field names and order mirror the `jorg` table columns; the
+    naming is kept counterintuitive for database compatibility:
+    id is the 4-digit branch number, oid the 4-digit number of the bank
+    the branch belongs to.
+
+    Mirrored in pyfaktury's fk/banknum.py -- keep in sync.
+    """
+    id: int
+    oid: int
+    j_org_name: str = ""
+    j_org_name_sh: str = ""
+    j_org_city: str = ""
+    j_org_street: str = ""
+    post_code: str = ""
+    post_city: str = ""
+    post_box: str = ""
+    post_box_code: str = ""
+    phone_code: str = ""
+    phone_no1: str = ""
+    phone_no2: str = ""
+    phone_no3: str = ""
+    phone_no4: str = ""
+    begin_work_date: str = ""
+    bic: str = ""
+    bic_sepa: str = ""
+    web_address: str = ""
+    voivodeship: str = ""
+    county: str = ""
+    mail_city: str = ""
+    mail_street: str = ""
+    mail_post_code: str = ""
+    mail_post_city: str = ""
+    mail_post_box: str = ""
+    mail_post_box_code: str = ""
+    union_n: str = ""
+    parent_no: str = ""
+#-----------------------------------------------------------------------------#
+    @classmethod
+    def from_row(cls, row: tuple) -> "JorgInfo":
+        """Create object from a `jorg` table row (as returned by
+        "select * from jorg")"""
+        return cls(*row)
+#-----------------------------------------------------------------------------#
+    @classmethod
+    def from_line(cls, line: list[str]) -> "JorgInfo":
+        """Create object from one plewibnra.txt line (tab-split fields)"""
+        vals = [int(line[4][4:8]), int(line[4][0:4])]
+        vals.extend(f.strip() for f in line[5:32])
+        return cls(*vals)
+#-----------------------------------------------------------------------------#
+    def to_row(self) -> tuple:
+        """Convert object to a `jorg` table row"""
+        return astuple(self)
+#-----------------------------------------------------------------------------#
+    def frmt_row(self) -> tuple:
+        """Convert object to a row of values formatted for display"""
+        return (self.j_org_name,
+                self.j_org_name_sh,
+                self.j_org_street,
+                self.post_code + " " + self.j_org_city,
+                self.post_city,
+                self.post_box_code + " " + self.post_box,
+                self.phone_code + " " + self.phone_no1 + ", " + self.phone_no2,
+                self.phone_code + " " + self.phone_no3 + ", " + self.phone_no4,
+                self.begin_work_date,
+                self.bic,
+                self.bic_sepa,
+                self.web_address,
+                self.voivodeship + " " + self.county,
+                self.mail_city + " " + self.mail_street,
+                self.mail_post_code + " " + self.mail_post_city,
+                self.mail_post_box + " " + self.mail_post_box_code,
+                self.union_n,
+                self.parent_no)
 #-----------------------------------------------------------------------------#
 def iban_letter2num(letter: str) -> str:
     return str(ord(letter) - ord("A") + 10)
@@ -202,46 +300,45 @@ def sql_get_all_jorg(bid: int) -> tuple[list, str | None]:
     return sql_command_get(
         """select id from jorg where oid=? order by id""", (bid,))
 #-----------------------------------------------------------------------------#
-def sql_get_bank_info_frmt(number: str) -> tuple[list, list, str | None]:
-    """Get bank info from db based on first 4 or 8 IBAN numbers"""
-    ret1 = []
-    ret2 = []
+def sql_get_bank_info_frmt(
+        number: str) -> tuple[BankInfo | None, JorgInfo | None, str | None]:
+    """Get bank info from db based on first 4 or 8 IBAN numbers
+
+    Returns:
+        tuple[BankInfo | None, JorgInfo | None, str | None]: Bank and
+        branch (jorg) info objects, each None when not found, and an
+        error message or None.
+    """
+    bank_info: BankInfo | None = None
+    jorg_info: JorgInfo | None = None
     if len(number) > 3:
         # bank
         d, error_info = chk_str_to_int(number[0:4])
         if error_info is not None:
-            return ret1, ret2, error_info
+            return bank_info, jorg_info, error_info
         d1 = d
         logger.debug("First number id: %d", d1)
         d, error_info = sql_command_get(
             """select * from bank where id=? limit 1""", (d1,))
         if error_info is not None:
-            return ret1, ret2, error_info
+            return bank_info, jorg_info, error_info
         if d:
-            ret1 = d[0]
+            bank_info = BankInfo.from_row(d[0])
             if len(number) > 7:
                 # detailed unit info
                 d, error_info = chk_str_to_int(number[4:8])
                 if error_info is not None:
-                    return ret1, ret2, error_info
+                    return bank_info, jorg_info, error_info
                 d2 = d
                 logger.debug("Second number id: %d", d2)
                 d, error_info = sql_command_get(
-                  """select j_org_name, j_org_name_sh, j_org_street,
-                  post_code || ' ' || j_org_city, post_city,
-                  post_box_code || ' ' || post_box,
-                  phone_code || ' ' || phone_no1 || ', ' || phone_no2,
-                  phone_code || ' ' || phone_no3 || ', ' || phone_no4,
-                  begin_work_date, bic, bic_sepa, web_address,
-                  voivodeship || ' ' || county, mail_city || ' ' || mail_street,
-                  mail_post_code || ' ' || mail_post_city,
-                  mail_post_box || ' ' || mail_post_box_code, union_n, parent_no
-                  from jorg where id=? and oid=? limit 1""", (d2, d1,))
+                  """select * from jorg where id=? and oid=? limit 1""",
+                  (d2, d1,))
                 if error_info is not None:
-                    return ret1, ret2, error_info
+                    return bank_info, jorg_info, error_info
                 if d:
-                    ret2 = d[0]
-    return ret1, ret2, None
+                    jorg_info = JorgInfo.from_row(d[0])
+    return bank_info, jorg_info, None
 #-----------------------------------------------------------------------------#
 def get_date_today_iso() -> str:
     today = date.today()
@@ -280,21 +377,18 @@ def chk_avail_update() -> tuple[bool, str]:
         return True, _("Dzisiaj już aktualizowano dane. Czy wykonać "
                 "aktualizację danymi pobranymi ze strony NBP jeszcze raz?")
 #-----------------------------------------------------------------------------#
-def bank_b_iterator(bdict: dict) -> Iterator[tuple[int, str, str]]:
+def bank_b_iterator(bdict: dict) -> Iterator[BankInfo]:
     """Iterating through bank info"""
     for i in bdict:
-        yield i, bdict[i][0], bdict[i][1]
+        yield BankInfo(i, bdict[i][0], bdict[i][1])
 #-----------------------------------------------------------------------------#
-def bank_j_iterator(content: io.StringIO, bdict: dict) -> Iterator[tuple]:
+def bank_j_iterator(content: io.StringIO, bdict: dict) -> Iterator[JorgInfo]:
     """Iterating through unit info"""
     line = content.readline().split("\t")
     while (len(line) > 1):
         i = int(line[4][0:4])
         bdict[i] = line[1].strip(), line[2].strip()
-        a = int(line[4][4:8])
-        dt = [a, i]
-        dt.extend(line[i].strip() for i in range(5,32))
-        yield tuple(dt)
+        yield JorgInfo.from_line(line)
         line = content.readline().split("\t")
 #-----------------------------------------------------------------------------#
 def sql_upd_many(cmd: str, i_iter: Iterable[tuple]) -> str | None:
@@ -383,9 +477,11 @@ def bank_base_update(content: io.StringIO) -> str | None:
         c.execute("""delete from bank""")
         c.executemany(
             """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
-               ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
+               ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (j.to_row() for j in jit))
         bit = bank_b_iterator(bd)
-        c.executemany("""insert into bank values (?,?,?)""", bit)
+        c.executemany("""insert into bank values (?,?,?)""",
+                      (b.to_row() for b in bit))
         c.execute("""delete from date_mod""")
         c.execute(
             """insert or replace into date_mod values (?,?)""",

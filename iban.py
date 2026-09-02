@@ -165,17 +165,19 @@ class AppWindow(Gtk.Window):
             accno = acc1 + acc2
             self.iban_corr.set_text('')
 
-        d1, d2, er = sql_get_bank_info_frmt(accno)
+        bank, jorg, er = sql_get_bank_info_frmt(accno)
         if er is not None:
             return
-        if d1: # bank info
-            for i, e in enumerate(self.lab_list1, start=1):
-                e.set_text(d1[i])
+        if bank is not None: # bank info
+            vals = (bank.bank_name, bank.bank_tname)
+            for i, e in enumerate(self.lab_list1):
+                e.set_text(str(vals[i]))
         else:
             self.clear_fields_bank()
-        if d2: # jorg info
+        if jorg is not None: # jorg info
+            vals = jorg.frmt_row()
             for i, e in enumerate(self.lab_list2):
-                e.set_text(str(d2[i]))
+                e.set_text(str(vals[i]))
         else:
             self.clear_fields_jorg()
 

@@ -13,9 +13,10 @@ from unittest.mock import MagicMock, patch
 os.environ["LANGUAGE"] = "pl"
 
 from ibanpl import (
-    MIN_BANK_RECORDS, b_dbop, bank_base_update, bank_j_iterator,
-    bank_list_update, bank_update, chk_iban, sql_get_all_bank_no,
-    sql_get_all_jorg, validate_bank_data)
+    MIN_BANK_RECORDS, BankInfo, JorgInfo, b_dbop, bank_base_update,
+    bank_j_iterator, bank_list_update, bank_update, chk_iban,
+    sql_get_all_bank_no, sql_get_all_jorg, sql_get_bank_info_frmt,
+    validate_bank_data)
 
 
 class _FailingCursorProxy:
@@ -451,6 +452,118 @@ class SqlGetAllTests(unittest.TestCase):
         rows, error_info = sql_get_all_jorg(5555)
         self.assertIsNone(error_info)
         self.assertEqual(rows, [])
+
+
+class BankInfoTests(unittest.TestCase):
+    ROW = (1010, "Narodowy Bank Polski", "NBP")
+
+    def test_from_row(self) -> None:
+        self.assertEqual(
+            BankInfo.from_row(self.ROW),
+            BankInfo(1010, "Narodowy Bank Polski", "NBP"))
+
+    def test_to_row(self) -> None:
+        self.assertEqual(BankInfo(*self.ROW).to_row(), self.ROW)
+
+    def test_row_roundtrip(self) -> None:
+        self.assertEqual(BankInfo.from_row(self.ROW).to_row(), self.ROW)
+
+
+class JorgInfoTests(unittest.TestCase):
+    ROW = (2025, 1010, "Oddział", "Oddz.", "Warszawa",
+           "ul. Świętokrzyska 12", "00-919", "Warszawa", "cb 1", "00-001",
+           "22", "111", "222", "333", "444", "2001-01-01", "BICAB",
+           "BICABSEP", "www.nbp.pl", "mazowieckie", "warszawski", "mc",
+           "ms", "00-001", "mpc", "mpb", "002", "BANKI", "1010")
+
+    def test_from_row(self) -> None:
+        j = JorgInfo.from_row(self.ROW)
+        self.assertEqual(j.id, 2025)   # branch number
+        self.assertEqual(j.oid, 1010)  # bank number
+        self.assertEqual(j.j_org_name, "Oddział")
+        self.assertEqual(j.parent_no, "1010")
+
+    def test_to_row(self) -> None:
+        self.assertEqual(JorgInfo.from_row(self.ROW).to_row(), self.ROW)
+
+    def test_from_line(self) -> None:
+        line = ["d"] * 32
+        line[4] = "10102025"
+        for i in range(5, 32):
+            line[i] = " f{0} ".format(i)
+        j = JorgInfo.from_line(line)
+        self.assertEqual(j.id, 2025)   # branch number
+        self.assertEqual(j.oid, 1010)  # bank number
+        self.assertEqual(j.j_org_name, "f5")
+        self.assertEqual(j.j_org_name_sh, "f6")
+        self.assertEqual(j.parent_no, "f31")
+
+    def test_frmt_row(self) -> None:
+        self.assertEqual(
+            JorgInfo.from_row(self.ROW).frmt_row(),
+            ("Oddział", "Oddz.", "ul. Świętokrzyska 12", "00-919 Warszawa",
+             "Warszawa", "00-001 cb 1", "22 111, 222", "22 333, 444",
+             "2001-01-01", "BICAB", "BICABSEP", "www.nbp.pl",
+             "mazowieckie warszawski", "mc ms", "00-001 mpc", "mpb 002",
+             "BANKI", "1010"))
+
+
+class SqlGetBankInfoFrmtTests(unittest.TestCase):
+    """End-to-end coverage of sql_get_bank_info_frmt against a real
+    (temp-file) sqlite database, since it now deserializes rows into
+    BankInfo/JorgInfo objects."""
+
+    JORG = JorgInfo.from_row(JorgInfoTests.ROW)
+
+    def setUp(self) -> None:
+        fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        os.remove(self.db_path)  # b_dbop() creates the schema fresh
+        con = b_dbop(self.db_path)
+        con.execute("insert into bank values (?,?,?)",
+                    (1010, "Narodowy Bank Polski", "NBP"))
+        con.execute(
+            "insert into jorg values (" + ",".join(["?"] * 29) + ")",
+            self.JORG.to_row())
+        con.commit()
+        con.close()
+        patcher = patch("ibanpl.b_dbop",
+                        side_effect=lambda db_file_name=None:
+                            b_dbop(self.db_path))
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
+    def tearDown(self) -> None:
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_bank_and_branch_found(self) -> None:
+        bank, jorg, error_info = sql_get_bank_info_frmt("10102025")
+        self.assertIsNone(error_info)
+        self.assertEqual(bank, BankInfo(1010, "Narodowy Bank Polski", "NBP"))
+        # parent_no comes back as int: sqlite's integer column affinity
+        # converts the numeric string on storage.
+        expected = JorgInfo.from_row(
+            self.JORG.to_row()[:28] + (int(self.JORG.parent_no),))
+        self.assertEqual(jorg, expected)
+
+    def test_bank_number_only_returns_no_branch(self) -> None:
+        bank, jorg, error_info = sql_get_bank_info_frmt("1010")
+        self.assertIsNone(error_info)
+        self.assertEqual(bank, BankInfo(1010, "Narodowy Bank Polski", "NBP"))
+        self.assertIsNone(jorg)
+
+    def test_unknown_bank_returns_no_objects(self) -> None:
+        bank, jorg, error_info = sql_get_bank_info_frmt("99991234")
+        self.assertIsNone(error_info)
+        self.assertIsNone(bank)
+        self.assertIsNone(jorg)
+
+    def test_non_numeric_number_returns_error(self) -> None:
+        bank, jorg, error_info = sql_get_bank_info_frmt("abcd")
+        self.assertEqual(error_info, "Nieprawidłowy znak")
+        self.assertIsNone(bank)
+        self.assertIsNone(jorg)
 
 
 def _po_join(pieces: list[str]) -> str:
