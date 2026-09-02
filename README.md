@@ -15,6 +15,8 @@ account number.
 Program korzysta z bazy danych SQLite.
 The program uses an SQLite database.
 
+<img src="other/ibanpl_en.png" alt="Screenshot 1" style="height: 450px;"><img src="other/ibanpl_pl.png" alt="Screenshot 2" style="height: 450px;">
+
 # Wymagania / Requirements
 
  * Python 3
