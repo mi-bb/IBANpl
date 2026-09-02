@@ -6,7 +6,7 @@
 #        _/    _/    _/  _/    _/  _/    _/_/  _/        _/        
 #     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/   
 #                                                                  
-#    Copyright (C) 2016-2019 Michał Bąbik
+#    Copyright (C) 2016-2026 Michał Bąbik
 #
 #    Used parts of code from Wikipedia (http://pl.wikipedia.org/wiki/IBAN)
 #    This file is part of IBANpl.
