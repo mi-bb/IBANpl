@@ -1,5 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
 PDIR=`dirname "$0"`
 cd ${PDIR}
-exec python3 -O iban.py "$@"
+
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "Could not find Python interpreter (python3/python)." >&2
+    exit 1
+fi
+
+exec "${PYTHON}" -O iban.py "$@"

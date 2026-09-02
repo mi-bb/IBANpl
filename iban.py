@@ -1,12 +1,10 @@
-# -*- coding: UTF-8 -*-
-#                                                                  
-#         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/     
-#          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/      
-#         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/       
-#        _/    _/    _/  _/    _/  _/    _/_/  _/        _/        
-#     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/   
-#                                                                
-#    Copyright (C) 2016-2019 Michal Babik
+#         _/_/_/  _/_/_/      _/_/    _/      _/  _/_/_/    _/
+#          _/    _/    _/  _/    _/  _/_/    _/  _/    _/  _/
+#         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/
+#        _/    _/    _/  _/    _/  _/    _/_/  _/        _/
+#     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/
+#
+#    Copyright (C) 2016-2026 Michal Babik
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -22,22 +20,22 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
 import gi
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GdkPixbuf
-from ibanpl import sql_get_all_bank_no, sql_get_all_jorg, \
-                   chk_avail_update, bank_list_update, chk_iban, \
-                   sql_get_bank_info_frmt
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
+                   chk_avail_update, bank_list_update, chk_iban,
+                   sql_get_bank_info_frmt)
 #-----------------------------------------------------------------------------#
 class AppWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
-        self.set_title("IBANpl v1.0")
+        self.set_title("IBANpl v1.1")
         self.set_position(Gtk.WindowPosition.CENTER)
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lab = Gtk.Label()
         lab.set_label("Wybierz numery banku i jednostki organizacyjnej")
-        lab.set_margin_start(8);
-        lab.set_margin_end(8);
+        lab.set_margin_start(8)
+        lab.set_margin_end(8)
         vbox1.pack_start(lab, False, True, 8)
         lab = Gtk.Label()
         lab.set_markup("XX <span foreground=\"magenta\">XXXX</span> "
@@ -65,15 +63,15 @@ class AppWindow(Gtk.Window):
         vbox1.pack_start(self.iban_corr, False, True, 8)
         fr1 = Gtk.Frame(label="Informacje o banku :")
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_margin_start(10);
-        alg1.set_margin_end(10);
+        alg1.set_margin_start(10)
+        alg1.set_margin_end(10)
         grid1 = Gtk.Grid()
         alg1.add(grid1)
         fr1.add(alg1)
         vbox1.pack_start(fr1, True, True, 8)
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
-        alg1.set_margin_start(8);
-        alg1.set_margin_end(8);
+        alg1.set_margin_start(8)
+        alg1.set_margin_end(8)
         alg1.add(vbox1)
         self.add(alg1)
         self.lab_list1 = []
@@ -85,10 +83,10 @@ class AppWindow(Gtk.Window):
             lb.set_label(v)
             grid1.attach(lb, 0, i, 1, 1)
             grid1.attach(self.lab_list1[i], 1, i, 1, 1)
-        l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:", 
+        l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:",
                 "Poczta:", "Skr poczt.:", "Tel:", "Fax:", "Rozp. dział.:",
                 "BIC:", "BIC SEPA:", "www", "Woj./Powiat:", "Adr. kor.:",
-                "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:", 
+                "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:",
                 "Nr rozl jedn nadrz:"]
         for i, v in enumerate(l_lab):
             lb = Gtk.Label()
@@ -113,123 +111,116 @@ class AppWindow(Gtk.Window):
 
     def combo1_change(self, combox):
         self.refr_jorg_list()
-        return
 
     def combo2_change(self, combox):
-        if self.iban_entry.get_text() == '': self.refr_bank_info()
-        return
+        if self.iban_entry.get_text() == '':
+            self.refr_bank_info()
 
     def entry_change(self, gtkentry):
         acc = gtkentry.get_text()
-        if acc == '': 
+        if acc == '':
             self.iban_corr.set_text('')
             return
         acc = acc.replace(' ','')
         acc = acc.replace('-','')
-        if len(acc) > 5: self.refr_bank_info(acc[2:])
+        if len(acc) > 5:
+            self.refr_bank_info(acc[2:])
         r, d, acno = chk_iban(acc)
         st = ''
         if r:
             st = '<span foreground=\"green\">'
             gtkentry.set_text(acno)
-        else: st = '<span foreground=\"red\">'
+        else:
+            st = '<span foreground=\"red\">'
         self.iban_corr.set_markup(st + d + '</span>')
-        return
 
     def refr_bank_list(self):
         self.cbox1.remove_all()
-        r, d = sql_get_all_bank_no()
-        for i in d: self.cbox1.append_text(str(i[0]))
+        d, er = sql_get_all_bank_no()
+        for i in d:
+            self.cbox1.append_text(str(i[0]))
         self.cbox1.set_active(0)
-        return
 
     def refr_jorg_list(self):
         self.cbox2.remove_all()
         ct = self.cbox1.get_active_text()
-        r, d = sql_get_all_jorg(int(ct))
+        d, er = sql_get_all_jorg(int(ct))
         for i in d:
             t = str(i[0])
-            while len(t) < 4: t = '0' + t
+            while len(t) < 4:
+                t = '0' + t
             self.cbox2.append_text(t)
         self.cbox2.set_active(0)
-        return
 
     def refr_bank_info(self, accno=None):
         if not accno: # from comboboxes
             acc1 = self.cbox1.get_active_text()
             acc2 = self.cbox2.get_active_text()
-            if not acc1 or not acc2: return
+            if not acc1 or not acc2:
+                return
             accno = acc1 + acc2
             self.iban_corr.set_text('')
 
-        r, d1, d2, er = sql_get_bank_info_frmt(accno)
-        if r:
-            if d1: # bank info
-                for i, e in enumerate(self.lab_list1, start=1):
-                    e.set_text(d1[i])
-            else:
-                self.clear_fields_bank()
-            if d2: # jorg info
-                for i, e in enumerate(self.lab_list2):
-                    e.set_text(str(d2[i]))
-            else:
-                self.clear_fields_jorg()
-        return
+        d1, d2, er = sql_get_bank_info_frmt(accno)
+        if er is not None:
+            return
+        if d1: # bank info
+            for i, e in enumerate(self.lab_list1, start=1):
+                e.set_text(d1[i])
+        else:
+            self.clear_fields_bank()
+        if d2: # jorg info
+            for i, e in enumerate(self.lab_list2):
+                e.set_text(str(d2[i]))
+        else:
+            self.clear_fields_jorg()
 
     def clear_fields_bank(self):
         """Clears bank data fields"""
-        for e in self.lab_list1: e.set_text("")
-        return
+        for e in self.lab_list1:
+            e.set_text("")
 
     def clear_fields_jorg(self):
         """Clears jorg data fields"""
-        for e in self.lab_list2: e.set_text("")
-        return
+        for e in self.lab_list2:
+            e.set_text("")
 
     def bank_list_update(self, widget):
         """Updating bank data information"""
-        r, oldd, newd = chk_avail_update()
-        if not r:
-            infodial(
-                self,
-                'Nie potrzeba aktualizacji,\n'
-                'informacje o bankach z dnia\n' +
-                oldd + 
-                '\nsą aktualne.')
-        elif questdial(
-                self,
-                'Do obecnych danych banków z dnia\n' + oldd +
-                '\nDostępne są aktualizacje z dnia\n' + newd +
-                '\nCzy mają zostać zainstalowane ?'):
-            r, d = bank_list_update()
-            if r:
+        status, message = chk_avail_update()
+        if not status:
+            infodial(self, message)
+        elif questdial(self, message):
+            error_info = bank_list_update()
+            if error_info is None:
                 infodial(
                     self,
                     'Informacje o bankach zostały pomyślnie uaktualnione.')
             else:
                 infodial(
                     self,
-                    'Nie udało się zaktualizować informacji o bankach:\n' + d)
-        return
+                    'Nie udało się zaktualizować informacji o bankach:\n' +
+                    error_info)
 
 #-----------------------------------------------------------------------------#
 def questdial(widget, t):
     res = False
     md = Gtk.MessageDialog(widget,
-                           Gtk.DialogFlags.MODAL | 
+                           Gtk.DialogFlags.MODAL |
                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                            Gtk.MessageType.QUESTION,
                            Gtk.ButtonsType.YES_NO,
                            t)
     md.set_title('Question')
     r = md.run()
-    if r == Gtk.ResponseType.YES: res = True
+    if r == Gtk.ResponseType.YES:
+        res = True
     md.destroy()
     return res
 #-----------------------------------------------------------------------------#
 def infodial(widget, t):
     md = Gtk.MessageDialog(widget,
-                           Gtk.DialogFlags.MODAL | 
+                           Gtk.DialogFlags.MODAL |
                            Gtk.DialogFlags.DESTROY_WITH_PARENT,
                            Gtk.MessageType.INFO,
                            Gtk.ButtonsType.OK,
@@ -242,4 +233,3 @@ if __name__ == "__main__":
     win = AppWindow()
     win.show_all()
     Gtk.main()
-
