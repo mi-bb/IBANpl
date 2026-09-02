@@ -19,12 +19,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
+import gettext
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
-                   chk_avail_update, bank_list_update, chk_iban,
-                   sql_get_bank_info_frmt)
+                    chk_avail_update, bank_list_update, chk_iban,
+                    sql_get_bank_info_frmt)
+_ = gettext.translation("ibanpl", localedir="locale", fallback=True).gettext
 #-----------------------------------------------------------------------------#
 class AppWindow(Gtk.Window):
     def __init__(self):
@@ -33,7 +36,7 @@ class AppWindow(Gtk.Window):
         self.set_position(Gtk.WindowPosition.CENTER)
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lab = Gtk.Label()
-        lab.set_label("Wybierz numery banku i jednostki organizacyjnej")
+        lab.set_label(_("Wybierz numery banku i jednostki organizacyjnej"))
         lab.set_margin_start(8)
         lab.set_margin_end(8)
         vbox1.pack_start(lab, False, True, 8)
@@ -44,24 +47,24 @@ class AppWindow(Gtk.Window):
         hbox2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.cbox1 = Gtk.ComboBoxText()
         self.cbox2 = Gtk.ComboBoxText()
-        but1 = Gtk.Button.new_with_label("Uaktualnij Bazę")
+        but1 = Gtk.Button.new_with_label(_("Uaktualnij bazę"))
         but1.connect("clicked", self.bank_list_update)
         hbox2.pack_start(self.cbox1, True, True, 4)
         hbox2.pack_start(self.cbox2, True, True, 0)
         hbox2.pack_start(but1, False, True, 4)
         vbox1.pack_start(hbox2, False, True, 8)
         lab = Gtk.Label()
-        lab.set_label("Lub wpisz numer konta:")
+        lab.set_label(_("Lub wpisz numer konta:"))
         vbox1.pack_start(lab, False, True, 8)
         self.iban_entry = Gtk.Entry()
-        self.iban_entry.set_tooltip_text("Wpisz ręcznie numer kona aby "
+        self.iban_entry.set_tooltip_text(_("Wpisz ręcznie numer konta, aby "
                 "pokazać\ninformacje o banku i zweryfikować jego "
-                "poprawność.\nAby działał wybór numerów z list to "
-                "pole musi być puste")
+                "poprawność.\nAby działał wybór numerów z list, to pole "
+                "musi być puste"))
         vbox1.pack_start(self.iban_entry, False, True, 8)
         self.iban_corr = Gtk.Label()
         vbox1.pack_start(self.iban_corr, False, True, 8)
-        fr1 = Gtk.Frame(label="Informacje o banku :")
+        fr1 = Gtk.Frame(label=_("Informacje o banku:"))
         alg1 = Gtk.Alignment(xalign=0.5, yalign=0.5, xscale=1, yscale=1)
         alg1.set_margin_start(10)
         alg1.set_margin_end(10)
@@ -76,18 +79,19 @@ class AppWindow(Gtk.Window):
         self.add(alg1)
         self.lab_list1 = []
         self.lab_list2 = []
-        l_lab = ["Nazwa:", "Nazwa handlowa:"]
+        l_lab = [_("Nazwa:"), _("Nazwa handlowa:")]
         for i, v in enumerate(l_lab):
             self.lab_list1.append(Gtk.Label())
             lb = Gtk.Label()
             lb.set_label(v)
             grid1.attach(lb, 0, i, 1, 1)
             grid1.attach(self.lab_list1[i], 1, i, 1, 1)
-        l_lab = ["Nazwa jednostki:", "Nazwa skr.:", "Adres:", "Adres:",
-                "Poczta:", "Skr poczt.:", "Tel:", "Fax:", "Rozp. dział.:",
-                "BIC:", "BIC SEPA:", "www", "Woj./Powiat:", "Adr. kor.:",
-                "Adr. kor.:", "Adr k skr pocz:", "Zrzeszenie:",
-                "Nr rozl jedn nadrz:"]
+        l_lab = [_("Nazwa jednostki:"), _("Nazwa skr.:"), _("Adres:"),
+                _("Adres:"), _("Poczta:"), _("Skr. poczt.:"), _("Tel.:"),
+                _("Fax:"), _("Rozp. dział.:"), _("BIC:"), _("BIC SEPA:"),
+                "www", _("Woj./Powiat:"), _("Adr. kor.:"), _("Adr. kor.:"),
+                _("Adr. kor. skr. pocz.:"), _("Zrzeszenie:"),
+                _("Nr rozl. jedn. nadrz.:")]
         for i, v in enumerate(l_lab):
             lb = Gtk.Label()
             lb.set_label(v)
@@ -195,12 +199,13 @@ class AppWindow(Gtk.Window):
             if error_info is None:
                 infodial(
                     self,
-                    'Informacje o bankach zostały pomyślnie uaktualnione.')
+                    _('Informacje o bankach zostały pomyślnie '
+                      'uaktualnione.'))
             else:
                 infodial(
                     self,
-                    'Nie udało się zaktualizować informacji o bankach:\n' +
-                    error_info)
+                    _('Nie udało się zaktualizować informacji o bankach:\n')
+                    + error_info)
 
 #-----------------------------------------------------------------------------#
 def questdial(widget, t):
@@ -211,7 +216,7 @@ def questdial(widget, t):
                            Gtk.MessageType.QUESTION,
                            Gtk.ButtonsType.YES_NO,
                            t)
-    md.set_title('Question')
+    md.set_title(_("Pytanie"))
     r = md.run()
     if r == Gtk.ResponseType.YES:
         res = True
@@ -225,7 +230,7 @@ def infodial(widget, t):
                            Gtk.MessageType.INFO,
                            Gtk.ButtonsType.OK,
                            t)
-    md.set_title('Information')
+    md.set_title(_("Informacja"))
     md.run()
     md.destroy()
 #------------------------------------------------------------------------

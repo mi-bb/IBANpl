@@ -26,6 +26,7 @@
 #-----------------------------------------------------------------------------#
 import sqlite3
 import io
+import gettext
 import logging
 from collections.abc import Callable, Iterable, Iterator
 from sqlite3 import Connection
@@ -34,6 +35,10 @@ from urllib.error import URLError
 from http.client import HTTPResponse
 from datetime import date
 logger = logging.getLogger(__name__)
+# Translations: Polish is the source text (msgid), other languages live in
+# the locale/ directory; with no matching catalog gettext falls back to the
+# Polish msgid itself.
+_ = gettext.translation("ibanpl", localedir="locale", fallback=True).gettext
 #-----------------------------------------------------------------------------#
 UPD_URL = "https://ewib.nbp.pl/plewibnra?dokNazwa=plewibnra.txt"
 UPD_TIMEOUT = 30
@@ -60,7 +65,7 @@ def chk_iban(number: str) -> tuple[bool, str, str]:
     number = "PL" + number
 
     if len(number) != 28:
-        msg = "Powinno być 26 znaków jest {0:d}".format(len(number)-2)
+        msg = _("Powinno być 26 znaków, jest {0:d}").format(len(number)-2)
         return False, msg, number
 
     nkf = number[2:4] + " " + number[4:8] + " " + number[8:12] + " " + \
@@ -72,12 +77,12 @@ def chk_iban(number: str) -> tuple[bool, str, str]:
     try:
         n = int(number)
     except ValueError:
-        return False, "Nieprawidłowy znak", number
+        return False, _("Nieprawidłowy znak"), number
 
     if n % 97 == 1:
-        return True, "Numer prawidłowy", nkf
+        return True, _("Numer prawidłowy"), nkf
     else:
-        return False, "Błąd w numerze", number
+        return False, _("Błąd w numerze"), number
 #-----------------------------------------------------------------------------#
 def b_dbop(db_file_name: str | None = None) -> sqlite3.Connection:
     """Open database file"""
@@ -185,7 +190,7 @@ def chk_str_to_int(number: str) -> tuple[int, str | None]:
     try:
         n = int(number)
     except ValueError:
-        return 0, "Nieprawidłowy znak"
+        return 0, _("Nieprawidłowy znak")
     return n, None
 #-----------------------------------------------------------------------------#
 def sql_get_all_bank_no() -> tuple[list, str | None]:
@@ -260,8 +265,8 @@ def chk_avail_update() -> tuple[bool, str]:
     """Check if bank data update service (NBP) is reachable"""
     response = get_url_response(UPD_URL, timeout=UPD_TIMEOUT)
     if not response:
-        return False, "Nie udało się połączyć z serwerem NBP w celu " + \
-                "pobrania danych o bankach (" + UPD_URL + ")"
+        return False, _("Nie udało się połączyć z serwerem NBP w celu "
+                "pobrania danych o bankach") + " (" + UPD_URL + ")"
     response.close()
     date_today = get_date_today_iso()
     d, error_info = sql_command_get(
@@ -269,11 +274,11 @@ def chk_avail_update() -> tuple[bool, str]:
     if error_info is not None:
         return False, error_info
     if len(d) > 0 and len(d[0]) > 0 and (d[0][0] != date_today):
-        return True, "Czy uaktualnić bazę informacji o bankach o dane " + \
-                "pobrane ze strony NBP ?"
+        return True, _("Czy uaktualnić bazę informacji o bankach danymi "
+                "pobranymi ze strony NBP?")
     else:
-        return True, "Dzisiaj już aktualizowano dane. Czy wykonać " + \
-                "aktualizację o dane pobrane ze strony NBP jeszcze raz ?"
+        return True, _("Dzisiaj już aktualizowano dane. Czy wykonać "
+                "aktualizację danymi pobranymi ze strony NBP jeszcze raz?")
 #-----------------------------------------------------------------------------#
 def bank_b_iterator(bdict: dict) -> Iterator[tuple[int, str, str]]:
     """Iterating through bank info"""
@@ -329,21 +334,21 @@ def validate_bank_data(content: io.StringIO) -> str | None:
         line = content.readline().split("\t")
         while len(line) > 1:
             if len(line) < 32:
-                return "Nieprawidłowy format pobranych danych o " + \
-                        "bankach (linia {0})".format(count + 1)
+                return _("Nieprawidłowy format pobranych danych o "
+                        "bankach (linia {0})").format(count + 1)
             try:
                 int(line[4][0:4])
                 int(line[4][4:8])
             except (ValueError, IndexError):
-                return "Nieprawidłowy format pobranych danych o " + \
-                        "bankach (linia {0})".format(count + 1)
+                return _("Nieprawidłowy format pobranych danych o "
+                        "bankach (linia {0})").format(count + 1)
             count += 1
             line = content.readline().split("\t")
     finally:
         content.seek(pos)
     if count < MIN_BANK_RECORDS:
-        return "Pobrane dane o bankach wyglądają na niekompletne " + \
-                "(otrzymano {0} rekordów)".format(count)
+        return _("Pobrane dane o bankach wyglądają na niekompletne "
+                "(otrzymano {0} rekordów)").format(count)
     return None
 #-----------------------------------------------------------------------------#
 def bank_base_update(content: io.StringIO) -> str | None:
@@ -406,12 +411,13 @@ def bank_list_update() -> str | None:
     """Updating bank list database with data downloaded from NBP"""
     response = get_url_response(UPD_URL, timeout=UPD_TIMEOUT)
     if not response:
-        return "Nie udało się pobrać danych o bankach z serwera NBP"
+        return _("Nie udało się pobrać danych o bankach z serwera NBP")
     try:
         content = response.read().decode("cp852")
     except Exception as e:
         logger.error("Błąd podczas przetwarzania pobranych danych: %s", str(e))
-        return "Błąd podczas przetwarzania pobranych danych: " + str(e)
+        return _("Błąd podczas przetwarzania pobranych danych: {0}").format(
+            str(e))
     finally:
         response.close()
     return bank_base_update(io.StringIO(content))

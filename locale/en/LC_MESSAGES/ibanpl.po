@@ -1,0 +1,186 @@
+# English translations for IBANpl.
+# Polish is the source text (msgid); this catalog provides English.
+#
+# This file is distributed under the same license as the IBANpl package
+# (GPLv3, see COPYING).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IBANpl 1.1\n"
+"Report-Msgid-Bugs-To: https://github.com/anomalyco/opencode/issues\n"
+"POT-Creation-Date: 2026-09-02 12:00+0200\n"
+"PO-Revision-Date: 2026-09-02 12:00+0200\n"
+"Last-Translator: Michal Babik\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: iban.py:39
+msgid "Wybierz numery banku i jednostki organizacyjnej"
+msgstr "Select the bank and organisational unit numbers"
+
+#: iban.py:50
+msgid "Uaktualnij bazę"
+msgstr "Update Database"
+
+#: iban.py:57
+msgid "Lub wpisz numer konta:"
+msgstr "Or enter an account number:"
+
+#: iban.py:60
+msgid ""
+"Wpisz ręcznie numer konta, aby pokazać\n"
+"informacje o banku i zweryfikować jego poprawność.\n"
+"Aby działał wybór numerów z list, to pole musi być puste"
+msgstr ""
+"Enter an account number manually to show\n"
+"information about the bank and verify its correctness.\n"
+"To use the number selection from the lists, this field must be empty"
+
+#: iban.py:67
+msgid "Informacje o banku:"
+msgstr "Bank information:"
+
+#: iban.py:82
+msgid "Nazwa:"
+msgstr "Name:"
+
+#: iban.py:82
+msgid "Nazwa handlowa:"
+msgstr "Trade name:"
+
+#: iban.py:89
+msgid "Nazwa jednostki:"
+msgstr "Unit name:"
+
+#: iban.py:89
+msgid "Nazwa skr.:"
+msgstr "Abbrev. name:"
+
+#: iban.py:89 iban.py:90
+msgid "Adres:"
+msgstr "Address:"
+
+#: iban.py:90
+msgid "Poczta:"
+msgstr "Post office:"
+
+#: iban.py:90
+msgid "Skr. poczt.:"
+msgstr "PO box:"
+
+#: iban.py:90
+msgid "Tel.:"
+msgstr "Phone:"
+
+#: iban.py:91
+msgid "Fax:"
+msgstr "Fax:"
+
+#: iban.py:91
+msgid "Rozp. dział.:"
+msgstr "Operating since:"
+
+#: iban.py:91
+msgid "BIC:"
+msgstr "BIC:"
+
+#: iban.py:91
+msgid "BIC SEPA:"
+msgstr "BIC SEPA:"
+
+#: iban.py:92
+msgid "Woj./Powiat:"
+msgstr "Voiv./County:"
+
+#: iban.py:92
+msgid "Adr. kor.:"
+msgstr "Mailing address:"
+
+#: iban.py:93
+msgid "Adr. kor. skr. pocz.:"
+msgstr "Mailing PO box:"
+
+#: iban.py:93
+msgid "Zrzeszenie:"
+msgstr "Association:"
+
+#: iban.py:94
+msgid "Nr rozl. jedn. nadrz.:"
+msgstr "Parent unit no.:"
+
+#: iban.py:202
+msgid "Informacje o bankach zostały pomyślnie uaktualnione."
+msgstr "Bank information has been updated successfully."
+
+#: iban.py:207
+msgid "Nie udało się zaktualizować informacji o bankach:\n"
+msgstr "Could not update the bank information:\n"
+
+#: iban.py:219
+msgid "Pytanie"
+msgstr "Question"
+
+#: iban.py:233
+msgid "Informacja"
+msgstr "Information"
+
+#: ibanpl.py:68
+#, python-brace-format
+msgid "Powinno być 26 znaków, jest {0:d}"
+msgstr "There should be 26 digits, got {0:d}"
+
+#: ibanpl.py:80 ibanpl.py:193
+msgid "Nieprawidłowy znak"
+msgstr "Invalid character"
+
+#: ibanpl.py:83
+msgid "Numer prawidłowy"
+msgstr "The number is correct"
+
+#: ibanpl.py:85
+msgid "Błąd w numerze"
+msgstr "Error in the number"
+
+#: ibanpl.py:268
+msgid "Nie udało się połączyć z serwerem NBP w celu pobrania danych o bankach"
+msgstr "Could not connect to the NBP server to download bank data"
+
+#: ibanpl.py:277
+msgid ""
+"Czy uaktualnić bazę informacji o bankach danymi pobranymi ze strony NBP?"
+msgstr ""
+"Update the bank information database with data downloaded from the NBP "
+"website?"
+
+#: ibanpl.py:280
+msgid ""
+"Dzisiaj już aktualizowano dane. Czy wykonać aktualizację danymi pobranymi ze "
+"strony NBP jeszcze raz?"
+msgstr ""
+"Data has already been updated today. Update again with data downloaded from "
+"the NBP website?"
+
+#: ibanpl.py:337 ibanpl.py:343
+#, python-brace-format
+msgid "Nieprawidłowy format pobranych danych o bankach (linia {0})"
+msgstr "Invalid format of the downloaded bank data (line {0})"
+
+#: ibanpl.py:350
+#, python-brace-format
+msgid ""
+"Pobrane dane o bankach wyglądają na niekompletne (otrzymano {0} rekordów)"
+msgstr ""
+"The downloaded bank data appears to be incomplete ({0} records received)"
+
+#: ibanpl.py:414
+msgid "Nie udało się pobrać danych o bankach z serwera NBP"
+msgstr "Could not download bank data from the NBP server"
+
+#: ibanpl.py:419
+#, python-brace-format
+msgid "Błąd podczas przetwarzania pobranych danych: {0}"
+msgstr "Error while processing the downloaded data: {0}"

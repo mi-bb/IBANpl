@@ -1,3 +1,5 @@
+import ast
+import gettext
 import io
 import os
 import sqlite3
@@ -5,6 +7,10 @@ import tempfile
 import unittest
 from collections.abc import Callable, Iterator
 from unittest.mock import MagicMock, patch
+
+# ibanpl loads its gettext catalog at import time and Polish is the msgid
+# source; pin Polish so the string assertions below are locale-independent.
+os.environ["LANGUAGE"] = "pl"
 
 from ibanpl import (
     MIN_BANK_RECORDS, b_dbop, bank_base_update, bank_j_iterator,
@@ -94,15 +100,15 @@ class ChkIbanTests(unittest.TestCase):
 
     def test_too_short(self) -> None:
         msg = self.assert_invalid("6110901014000007121981287")
-        self.assertEqual(msg, "Powinno być 26 znaków jest 25")
+        self.assertEqual(msg, "Powinno być 26 znaków, jest 25")
 
     def test_too_long(self) -> None:
         msg = self.assert_invalid("611090101400000712198128744")
-        self.assertEqual(msg, "Powinno być 26 znaków jest 27")
+        self.assertEqual(msg, "Powinno być 26 znaków, jest 27")
 
     def test_empty_string(self) -> None:
         msg = self.assert_invalid("")
-        self.assertEqual(msg, "Powinno być 26 znaków jest 0")
+        self.assertEqual(msg, "Powinno być 26 znaków, jest 0")
 
     def test_invalid_character(self) -> None:
         self.assert_invalid(
@@ -112,7 +118,7 @@ class ChkIbanTests(unittest.TestCase):
         # chk_iban always prepends "PL" itself, so a caller-supplied prefix
         # doubles up and pushes the length check to fail.
         msg = self.assert_invalid("PL" + self.VALID_UNFORMATTED)
-        self.assertEqual(msg, "Powinno być 26 znaków jest 28")
+        self.assertEqual(msg, "Powinno być 26 znaków, jest 28")
 
 
 class ValidateBankDataTests(unittest.TestCase):
@@ -445,6 +451,62 @@ class SqlGetAllTests(unittest.TestCase):
         rows, error_info = sql_get_all_jorg(5555)
         self.assertIsNone(error_info)
         self.assertEqual(rows, [])
+
+
+def _po_join(pieces: list[str]) -> str:
+    return "".join(ast.literal_eval("(" + " ".join(pieces) + ")"))
+
+
+def _po_messages(path: str) -> list[tuple[str, str]]:
+    """Minimal (msgid, msgstr) parser for the project's simple .po files
+    (multiline strings, no plural forms); the header entry is skipped."""
+    entries: list[tuple[str, str]] = []
+    field: str | None = None
+    parts: dict[str, list[str]] = {"msgid": [], "msgstr": []}
+
+    def flush() -> None:
+        nonlocal field, parts
+        if field is not None:
+            entries.append((_po_join(parts["msgid"]),
+                            _po_join(parts["msgstr"])))
+        parts = {"msgid": [], "msgstr": []}
+
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("msgid "):
+                flush()
+                field = "msgid"
+                parts["msgid"].append(line[len("msgid "):])
+            elif line.startswith("msgstr "):
+                field = "msgstr"
+                parts["msgstr"].append(line[len("msgstr "):])
+            elif line.startswith('"'):
+                parts[field].append(line)
+    flush()
+    return [(m, t) for m, t in entries if m]
+
+
+class TranslationTests(unittest.TestCase):
+    """Guards the English catalog shipped in locale/ -- both the .po source
+    and the compiled .mo are committed, so staleness would otherwise go
+    unnoticed."""
+
+    PO_PATH = os.path.join("locale", "en", "LC_MESSAGES", "ibanpl.po")
+
+    def test_english_po_is_fully_translated(self) -> None:
+        entries = _po_messages(self.PO_PATH)
+        self.assertGreater(len(entries), 20)
+        untranslated = [m for m, t in entries if not t]
+        self.assertEqual(untranslated, [])
+
+    def test_english_mo_matches_po(self) -> None:
+        t = gettext.translation("ibanpl", localedir="locale",
+                                languages=["en"])
+        for msgid, msgstr in _po_messages(self.PO_PATH):
+            self.assertEqual(t.gettext(msgid), msgstr)
 
 
 if __name__ == "__main__":
