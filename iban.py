@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
 import gi
-from gi.repository import Gtk, GdkPixbuf
+from gi.repository import Gtk
 from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
                    chk_avail_update, bank_list_update, chk_iban,
                    sql_get_bank_info_frmt)

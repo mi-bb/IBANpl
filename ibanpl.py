@@ -25,7 +25,6 @@
 #    along with IBANpl.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
 import sqlite3
-import shelve
 import io
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -58,13 +57,16 @@ def chk_iban(num):
         except ValueError:
             ret[1] = 'Nieprawidłowy znak'
         else:   
-            if n % 97 == 1: ret = [True, 'Numer prawidłowy', nkf]
-            else: ret[1] = 'Błąd w numerze'
+            if n % 97 == 1:
+                ret = [True, 'Numer prawidłowy', nkf]
+            else:
+                ret[1] = 'Błąd w numerze'
     return ret 
 #-----------------------------------------------------------------------------#
 def b_dbop(bn=None):
     """Open database file"""
-    if not bn: bn = DB_FILE_NAME
+    if not bn:
+        bn = DB_FILE_NAME
     con = sqlite3.connect(bn)
     con.text_factory = str
     c = con.cursor()
@@ -125,10 +127,13 @@ def sql_command_exec(cmd, args=(), rett=False, bn=None, comm=True):
     try:
         con = b_dbop(bn)
         c = con.cursor()
-        if comm: con.commit()
+        if comm:
+            con.commit()
         c.execute(cmd, args)
-        if rett: ret[1] = c.fetchall()
-        if comm: con.commit()
+        if rett:
+            ret[1] = c.fetchall()
+        if comm:
+            con.commit()
     except sqlite3.Error as e:
         print("An error occurred:", e)
         con.rollback()
@@ -136,8 +141,10 @@ def sql_command_exec(cmd, args=(), rett=False, bn=None, comm=True):
     else:
         ret[0] = True
     finally:
-        if c: c.close()
-        if con: con.close()
+        if c:
+            c.close()
+        if con:
+            con.close()
     return ret
 #-----------------------------------------------------------------------------#
 def chk_str_to_int(num):
@@ -158,17 +165,20 @@ def sql_get_bank_info_frmt(num):
     if len(num) > 3:
         # bank
         r, d = chk_str_to_int(num[0:4])
-        if not r: return r, ret1, ret2, d
+        if not r:
+            return r, ret1, ret2, d
         d1 = d
         r, d = sql_command_get(
             """select * from bank where id=? limit 1""", (d,))
-        if not r: return r, ret1, ret2, d
+        if not r:
+            return r, ret1, ret2, d
         if d:
             ret1 = d[0]
             if len(num) > 7:
                 # detailed unit info
                 r, d = chk_str_to_int(num[4:8])
-                if not r: return r, ret1, ret2, d
+                if not r:
+                    return r, ret1, ret2, d
                 r, d = sql_command_get(
                   """select j_org_name, j_org_name_sh, j_org_street,
                   post_code || ' ' || j_org_city, post_city,
@@ -180,8 +190,10 @@ def sql_get_bank_info_frmt(num):
                   mail_post_code || ' ' || mail_post_city,
                   mail_post_box || ' ' || mail_post_box_code, union_n, parent_no
                   from jorg where id=? and oid=? limit 1""", (d, d1,))
-                if not r: return r, ret1, ret2, d
-                if d: ret2 = d[0]
+                if not r:
+                    return r, ret1, ret2, d
+                if d:
+                    ret2 = d[0]
     return True, ret1, ret2, ''
 #-----------------------------------------------------------------------------#
 def get_date_today():
@@ -191,14 +203,16 @@ def get_date_today():
 def sql_get_all_bank_no():
     """Get all bank numbers"""
     r, d = sql_command_get("""select id from bank order by id""")
-    if not r: return False, d
+    if not r:
+        return False, d
     return True, d
 #-----------------------------------------------------------------------------#
 def sql_get_all_jorg(bid):
     """Get all jorg numbers of a bid bank"""
     r, d = sql_command_get("""select id from jorg where oid=? order by id""",
             (bid, ))
-    if not r: return False, d
+    if not r:
+        return False, d
     return True, d
 #-----------------------------------------------------------------------------#
 def chk_avail_update():
@@ -208,11 +222,14 @@ def chk_avail_update():
     if dt != '':
         r, d = sql_command_get(
             """select date_m from date_mod where id=?""", (idd,))
-        if not r: return False
+        if not r:
+            return False
         # none
-        if not d: return True, 'Brak', dt
+        if not d:
+            return True, 'Brak', dt
         # to update
-        elif d[0][0] != dt: return True, d[0][0], dt
+        elif d[0][0] != dt:
+            return True, d[0][0], dt
     return False, dt, dt
 #-----------------------------------------------------------------------------#
 def bank_b_iterator(bdict):
@@ -222,15 +239,15 @@ def bank_b_iterator(bdict):
 #-----------------------------------------------------------------------------#
 def bank_j_iterator(cont, bdict):
     """Iterating through unit info"""
-    l = cont.readline().split("\t")
-    while (len(l) > 1):
-        i = int(l[4][0:4])
-        bdict[i] = l[1].strip(), l[2].strip()
-        a = int(l[4][4:8])
+    line_parts = cont.readline().split("\t")
+    while (len(line_parts) > 1):
+        i = int(line_parts[4][0:4])
+        bdict[i] = line_parts[1].strip(), line_parts[2].strip()
+        a = int(line_parts[4][4:8])
         dt = [a, i]
-        dt.extend(l[i].strip() for i in range(5,32))
+        dt.extend(line_parts[i].strip() for i in range(5,32))
         yield tuple(dt)
-        l = cont.readline().split("\t")
+        line_parts = cont.readline().split("\t")
 #-----------------------------------------------------------------------------#
 def sql_upd_many(cmd, i_iter):
     """Update many items using iterators"""
@@ -249,15 +266,19 @@ def sql_upd_many(cmd, i_iter):
     else:
         ret[0] = True
     finally:
-        if c: c.close()
-        if con: con.close()
+        if c:
+            c.close()
+        if con:
+            con.close()
     return ret
 #-----------------------------------------------------------------------------#
 def bank_base_update(f):
     r, d = sql_command_save("""delete from jorg""")
-    if not r: return r, d
+    if not r:
+        return r, d
     r, d = sql_command_save("""delete from bank""")
-    if not r: return r, d
+    if not r:
+        return r, d
     #r, d = sql_command_save("""vacuum""")
     #if not r: return r, d
     bd = {}
@@ -265,19 +286,23 @@ def bank_base_update(f):
     r, d = sql_upd_many(
         """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
            ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
-    if not r: return r, d
+    if not r:
+        return r, d
     bit = bank_b_iterator(bd)
     r, d = sql_upd_many(
         """insert into bank values (?,?,?)""", bit)
-    if not r: return r, d
+    if not r:
+        return r, d
     # updating date
     r, d = sql_command_save("""delete from date_mod""")
-    if not r: return r, d
+    if not r:
+        return r, d
     dat = get_date_today()
     r, d = sql_command_save(
         """insert or replace into date_mod values (?,?)""",
         (1, dat))
-    if not r: return r, d
+    if not r:
+        return r, d
     return True, ''
 #-----------------------------------------------------------------------------#
 def bank_list_download():
@@ -292,9 +317,11 @@ def bank_list_download():
 def bank_list_update():
     """Updating bank list database from NBP eWIB"""
     r, d = bank_list_download()
-    if not r: return r, d
+    if not r:
+        return r, d
     r, d = bank_base_update(io.StringIO(d))
-    if not r: return r, d
+    if not r:
+        return r, d
     return True, ''
 #-----------------------------------------------------------------------------#
 def bank_update():
