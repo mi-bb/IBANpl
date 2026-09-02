@@ -5,7 +5,7 @@
 #         _/    _/_/_/    _/_/_/_/  _/  _/  _/  _/_/_/    _/       
 #        _/    _/    _/  _/    _/  _/    _/_/  _/        _/        
 #     _/_/_/  _/_/_/    _/    _/  _/      _/  _/        _/_/_/_/   
-#                                                                
+#                                                                  
 #    Copyright (C) 2016-2019 Michał Bąbik
 #
 #    Used parts of code from Wikipedia (http://pl.wikipedia.org/wiki/IBAN)
@@ -26,48 +26,64 @@
 #-----------------------------------------------------------------------------#
 import sqlite3
 import io
+import logging
+from collections.abc import Callable, Iterable, Iterator
+from sqlite3 import Connection
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+from http.client import HTTPResponse
 from datetime import date
+logger = logging.getLogger(__name__)
 #-----------------------------------------------------------------------------#
-DB_FILE_NAME = 'bn_base.db'
-BANK_LIST_URL = 'https://ewib.nbp.pl/plewibnra?dokNazwa=plewibnra.txt'
+UPD_URL = "https://ewib.nbp.pl/plewibnra?dokNazwa=plewibnra.txt"
+UPD_TIMEOUT = 30
+MIN_BANK_RECORDS = 100
+BANK_DB_FILE_NAME = "bn_base.db"
 #-----------------------------------------------------------------------------#
-def iban_letter2num(letter):
-    return str(ord(letter) - ord('A') + 10)
+def iban_letter2num(letter: str) -> str:
+    return str(ord(letter) - ord("A") + 10)
 #-----------------------------------------------------------------------------#
-def chk_iban(num):
-    """Check IBAN account correctness"""
-    ret = [False, '', num]
-    num = num.replace(' ','')
-    num = num.replace('-','')
-    num = 'PL' + num
-    if len(num) != 28:
-        tx = "Powinno być 26 znaków jest {0:d}".format(len(num)-2)
-        ret[1] = tx
+def chk_iban(number: str) -> tuple[bool, str, str]:
+    """Check IBAN account correctness.
+
+    Args:
+        number (str): IBAN Number to check
+
+    Returns:
+        tuple[bool, str, str]: Tuple containing validation information:
+        - bool info about number correctness
+        - string with verification message
+        - string with formatted IBAN number or processed number
+    """
+    number = number.replace(" ","")
+    number = number.replace("-","")
+    number = "PL" + number
+
+    if len(number) != 28:
+        msg = "Powinno być 26 znaków jest {0:d}".format(len(number)-2)
+        return False, msg, number
+
+    nkf = number[2:4] + " " + number[4:8] + " " + number[8:12] + " " + \
+          number[12:16] + " " + number[16:20] + " " + number[20:24] + \
+          " " + number[24:28]
+    number = number[4:] + iban_letter2num(number[0]) + \
+          iban_letter2num(number[1]) + number[2:4]
+
+    try:
+        n = int(number)
+    except ValueError:
+        return False, "Nieprawidłowy znak", number
+
+    if n % 97 == 1:
+        return True, "Numer prawidłowy", nkf
     else:
-        nkf = num[2:4] + ' ' + num[4:8] + ' ' + num[8:12] + ' ' + \
-              num[12:16] + ' ' + num[16:20] + ' ' + num[20:24] + \
-              ' ' + num[24:28]
-        num = num[4:] + iban_letter2num(num[0]) + \
-              iban_letter2num(num[1]) + num[2:4]
-        n = 0
-        try:
-            n = int(num)
-        except ValueError:
-            ret[1] = 'Nieprawidłowy znak'
-        else:   
-            if n % 97 == 1:
-                ret = [True, 'Numer prawidłowy', nkf]
-            else:
-                ret[1] = 'Błąd w numerze'
-    return ret 
+        return False, "Błąd w numerze", number
 #-----------------------------------------------------------------------------#
-def b_dbop(bn=None):
+def b_dbop(db_file_name: str | None = None) -> sqlite3.Connection:
     """Open database file"""
-    if not bn:
-        bn = DB_FILE_NAME
-    con = sqlite3.connect(bn)
+    if not db_file_name:
+        db_file_name = BANK_DB_FILE_NAME
+    con = sqlite3.connect(db_file_name)
     con.text_factory = str
     c = con.cursor()
     c.executescript("""
@@ -113,73 +129,99 @@ def b_dbop(bn=None):
     return con
     #return con, cc
 #-----------------------------------------------------------------------------#
-def sql_command_get(cmd, args=(), bn=None):
-    return sql_command_exec(cmd, args, True, bn, False)
-#-----------------------------------------------------------------------------#
-def sql_command_save(cmd, args=(), bn=None):
-    return sql_command_exec(cmd, args, False, bn, True)
-#-----------------------------------------------------------------------------#
-def sql_command_exec(cmd, args=(), rett=False, bn=None, comm=True):
-    """Execute sqlite command"""
-    ret = [False, None]
+def run_sql_command(
+    open_conn: Callable[[str | None], Connection],
+    cmd: str, args: tuple = (), return_result: bool = False,
+    db_file_name: str | None = None,
+    commit: bool = True) -> tuple[list, str | None]:
+    """Execute cmd/args against the connection open_conn(db_file_name) returns.
+
+    Inlined copy of pyfaktury's fk/sql_common.py -- keep in sync. open_conn
+    is referenced by name (resolved at call time), so unittest.mock.patch on
+    the module-level b_dbop still takes effect.
+    """
+    result_value: list = []
     c = None
     con = None
+    error_info = None
     try:
-        con = b_dbop(bn)
+        con = open_conn(db_file_name)
         c = con.cursor()
-        if comm:
-            con.commit()
         c.execute(cmd, args)
-        if rett:
-            ret[1] = c.fetchall()
-        if comm:
+        if return_result:
+            result_value = c.fetchall()
+        if commit:
             con.commit()
     except sqlite3.Error as e:
-        print("An error occurred:", e)
-        con.rollback()
-        ret[1] = e
-    else:
-        ret[0] = True
+        error_info = str(e)
+        logger.error("An error occurred: %s", error_info)
+        if con:
+            con.rollback()
     finally:
         if c:
             c.close()
         if con:
             con.close()
-    return ret
+    return result_value, error_info
 #-----------------------------------------------------------------------------#
-def chk_str_to_int(num):
+def sql_command_get(cmd: str, args: tuple = (),
+                    db_file_name: str | None = None) -> tuple[list, str | None]:
+    return sql_command_exec(cmd, args, True, db_file_name, False)
+#-----------------------------------------------------------------------------#
+def sql_command_save(cmd: str, args: tuple = (),
+                     db_file_name: str | None = None) -> str | None:
+    _, error_info = sql_command_exec(cmd, args, False, db_file_name, True)
+    return error_info
+#-----------------------------------------------------------------------------#
+def sql_command_exec(cmd: str, args: tuple = (), rett: bool = False,
+                     db_file_name: str | None = None,
+                     comm: bool = True) -> tuple[list, str | None]:
+    """Execute sqlite command"""
+    return run_sql_command(b_dbop, cmd, args, rett, db_file_name, comm)
+#-----------------------------------------------------------------------------#
+def chk_str_to_int(number: str) -> tuple[int, str | None]:
     """Check if string converts to int"""
     n = 0
     try:
-        n = int(num)
+        n = int(number)
     except ValueError:
-        return False, 'Nieprawidłowy znak'
-    else:
-        return True, n
-    return False, 'Nieprawidłowy znak'
+        return 0, "Nieprawidłowy znak"
+    return n, None
 #-----------------------------------------------------------------------------#
-def sql_get_bank_info_frmt(num):
+def sql_get_all_bank_no() -> tuple[list, str | None]:
+    """Get all bank numbers"""
+    return sql_command_get("""select id from bank order by id""")
+#-----------------------------------------------------------------------------#
+def sql_get_all_jorg(bid: int) -> tuple[list, str | None]:
+    """Get all jorg (branch) numbers of a bank with oid number bid"""
+    return sql_command_get(
+        """select id from jorg where oid=? order by id""", (bid,))
+#-----------------------------------------------------------------------------#
+def sql_get_bank_info_frmt(number: str) -> tuple[list, list, str | None]:
     """Get bank info from db based on first 4 or 8 IBAN numbers"""
     ret1 = []
     ret2 = []
-    if len(num) > 3:
+    if len(number) > 3:
         # bank
-        r, d = chk_str_to_int(num[0:4])
-        if not r:
-            return r, ret1, ret2, d
+        d, error_info = chk_str_to_int(number[0:4])
+        if error_info is not None:
+            return ret1, ret2, error_info
         d1 = d
-        r, d = sql_command_get(
-            """select * from bank where id=? limit 1""", (d,))
-        if not r:
-            return r, ret1, ret2, d
+        logger.debug("First number id: %d", d1)
+        d, error_info = sql_command_get(
+            """select * from bank where id=? limit 1""", (d1,))
+        if error_info is not None:
+            return ret1, ret2, error_info
         if d:
             ret1 = d[0]
-            if len(num) > 7:
+            if len(number) > 7:
                 # detailed unit info
-                r, d = chk_str_to_int(num[4:8])
-                if not r:
-                    return r, ret1, ret2, d
-                r, d = sql_command_get(
+                d, error_info = chk_str_to_int(number[4:8])
+                if error_info is not None:
+                    return ret1, ret2, error_info
+                d2 = d
+                logger.debug("Second number id: %d", d2)
+                d, error_info = sql_command_get(
                   """select j_org_name, j_org_name_sh, j_org_street,
                   post_code || ' ' || j_org_city, post_city,
                   post_box_code || ' ' || post_box,
@@ -189,69 +231,70 @@ def sql_get_bank_info_frmt(num):
                   voivodeship || ' ' || county, mail_city || ' ' || mail_street,
                   mail_post_code || ' ' || mail_post_city,
                   mail_post_box || ' ' || mail_post_box_code, union_n, parent_no
-                  from jorg where id=? and oid=? limit 1""", (d, d1,))
-                if not r:
-                    return r, ret1, ret2, d
+                  from jorg where id=? and oid=? limit 1""", (d2, d1,))
+                if error_info is not None:
+                    return ret1, ret2, error_info
                 if d:
                     ret2 = d[0]
-    return True, ret1, ret2, ''
+    return ret1, ret2, None
 #-----------------------------------------------------------------------------#
-def get_date_today():
+def get_date_today_iso() -> str:
     today = date.today()
     return today.isoformat()
 #-----------------------------------------------------------------------------#
-def sql_get_all_bank_no():
-    """Get all bank numbers"""
-    r, d = sql_command_get("""select id from bank order by id""")
-    if not r:
-        return False, d
-    return True, d
+def get_url_response(url: str,
+                     timeout: float | None = None) -> HTTPResponse | None:
+    """Check if url responses.
+
+    Inlined copy of pyfaktury's fk/sfun.py:ge_url_response -- keep in sync.
+    """
+    req = Request(url)
+    try:
+        response = urlopen(req, timeout=timeout)
+    except URLError as e:
+        logger.error("We failed to reach a server. Reason %s", str(e))
+        return None
+    return response
 #-----------------------------------------------------------------------------#
-def sql_get_all_jorg(bid):
-    """Get all jorg numbers of a bid bank"""
-    r, d = sql_command_get("""select id from jorg where oid=? order by id""",
-            (bid, ))
-    if not r:
-        return False, d
-    return True, d
+def chk_avail_update() -> tuple[bool, str]:
+    """Check if bank data update service (NBP) is reachable"""
+    response = get_url_response(UPD_URL, timeout=UPD_TIMEOUT)
+    if not response:
+        return False, "Nie udało się połączyć z serwerem NBP w celu " + \
+                "pobrania danych o bankach (" + UPD_URL + ")"
+    response.close()
+    date_today = get_date_today_iso()
+    d, error_info = sql_command_get(
+            """select date_m from date_mod where id=1""")
+    if error_info is not None:
+        return False, error_info
+    if len(d) > 0 and len(d[0]) > 0 and (d[0][0] != date_today):
+        return True, "Czy uaktualnić bazę informacji o bankach o dane " + \
+                "pobrane ze strony NBP ?"
+    else:
+        return True, "Dzisiaj już aktualizowano dane. Czy wykonać " + \
+                "aktualizację o dane pobrane ze strony NBP jeszcze raz ?"
 #-----------------------------------------------------------------------------#
-def chk_avail_update():
-    """Check if bank base on web is newer than in local DB"""
-    idd = 1
-    dt = get_date_today() 
-    if dt != '':
-        r, d = sql_command_get(
-            """select date_m from date_mod where id=?""", (idd,))
-        if not r:
-            return False
-        # none
-        if not d:
-            return True, 'Brak', dt
-        # to update
-        elif d[0][0] != dt:
-            return True, d[0][0], dt
-    return False, dt, dt
-#-----------------------------------------------------------------------------#
-def bank_b_iterator(bdict):
+def bank_b_iterator(bdict: dict) -> Iterator[tuple[int, str, str]]:
     """Iterating through bank info"""
     for i in bdict:
         yield i, bdict[i][0], bdict[i][1]
 #-----------------------------------------------------------------------------#
-def bank_j_iterator(cont, bdict):
+def bank_j_iterator(content: io.StringIO, bdict: dict) -> Iterator[tuple]:
     """Iterating through unit info"""
-    line_parts = cont.readline().split("\t")
-    while (len(line_parts) > 1):
-        i = int(line_parts[4][0:4])
-        bdict[i] = line_parts[1].strip(), line_parts[2].strip()
-        a = int(line_parts[4][4:8])
+    line = content.readline().split("\t")
+    while (len(line) > 1):
+        i = int(line[4][0:4])
+        bdict[i] = line[1].strip(), line[2].strip()
+        a = int(line[4][4:8])
         dt = [a, i]
-        dt.extend(line_parts[i].strip() for i in range(5,32))
+        dt.extend(line[i].strip() for i in range(5,32))
         yield tuple(dt)
-        line_parts = cont.readline().split("\t")
+        line = content.readline().split("\t")
 #-----------------------------------------------------------------------------#
-def sql_upd_many(cmd, i_iter):
+def sql_upd_many(cmd: str, i_iter: Iterable[tuple]) -> str | None:
     """Update many items using iterators"""
-    ret = [False, '']
+    error_info = None
     c = None
     con = None
     try:
@@ -260,82 +303,127 @@ def sql_upd_many(cmd, i_iter):
         c.executemany(cmd, i_iter)
         con.commit()
     except sqlite3.Error as e:
-        print("An error occurred:", e)
-        con.rollback()
-        ret[1] = e
-    else:
-        ret[0] = True
+        logger.error("An error occurred while updating data: %s", str(e))
+        if con:
+            con.rollback()
+        error_info = str(e)
     finally:
         if c:
             c.close()
         if con:
             con.close()
-    return ret
+    return error_info
 #-----------------------------------------------------------------------------#
-def bank_base_update(f):
-    r, d = sql_command_save("""delete from jorg""")
-    if not r:
-        return r, d
-    r, d = sql_command_save("""delete from bank""")
-    if not r:
-        return r, d
-    #r, d = sql_command_save("""vacuum""")
-    #if not r: return r, d
-    bd = {}
-    jit = bank_j_iterator(f, bd)
-    r, d = sql_upd_many(
-        """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
-           ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
-    if not r:
-        return r, d
-    bit = bank_b_iterator(bd)
-    r, d = sql_upd_many(
-        """insert into bank values (?,?,?)""", bit)
-    if not r:
-        return r, d
-    # updating date
-    r, d = sql_command_save("""delete from date_mod""")
-    if not r:
-        return r, d
-    dat = get_date_today()
-    r, d = sql_command_save(
-        """insert or replace into date_mod values (?,?)""",
-        (1, dat))
-    if not r:
-        return r, d
-    return True, ''
-#-----------------------------------------------------------------------------#
-def bank_list_download():
-    """Download bank list file from NBP eWIB"""
+def validate_bank_data(content: io.StringIO) -> str | None:
+    """Sanity-check downloaded bank registry data before it replaces the DB
+
+    Guards against wiping the bank tables with an empty, truncated or
+    otherwise malformed response (e.g. an HTML error page) instead of the
+    expected plewibnra.txt-format data. Mirrors the parsing/termination
+    logic of bank_j_iterator() without writing anything, then rewinds
+    content back to where it started so the real import can run.
+    """
+    pos = content.tell()
+    count = 0
     try:
-        with urlopen(Request(BANK_LIST_URL), timeout=30) as response:
-            data = response.read()
-    except URLError as e:
-        return False, 'Nie udało się pobrać danych: {0}'.format(e)
-    return True, data.decode('cp852')
+        line = content.readline().split("\t")
+        while len(line) > 1:
+            if len(line) < 32:
+                return "Nieprawidłowy format pobranych danych o " + \
+                        "bankach (linia {0})".format(count + 1)
+            try:
+                int(line[4][0:4])
+                int(line[4][4:8])
+            except (ValueError, IndexError):
+                return "Nieprawidłowy format pobranych danych o " + \
+                        "bankach (linia {0})".format(count + 1)
+            count += 1
+            line = content.readline().split("\t")
+    finally:
+        content.seek(pos)
+    if count < MIN_BANK_RECORDS:
+        return "Pobrane dane o bankach wyglądają na niekompletne " + \
+                "(otrzymano {0} rekordów)".format(count)
+    return None
 #-----------------------------------------------------------------------------#
-def bank_list_update():
-    """Updating bank list database from NBP eWIB"""
-    r, d = bank_list_download()
-    if not r:
-        return r, d
-    r, d = bank_base_update(io.StringIO(d))
-    if not r:
-        return r, d
-    return True, ''
+def bank_base_update(content: io.StringIO) -> str | None:
+    """Replace the bank registry tables with freshly downloaded data.
+
+    Validates content, then wipes and repopulates the jorg and bank
+    tables, followed by the date_mod timestamp, in that order, all
+    within a single database transaction. If any step fails the whole
+    transaction is rolled back, so the existing data stays untouched
+    rather than being left partially updated.
+
+    Args:
+        content (io.StringIO): Bank registry data in plewibnra.txt
+            format, as produced by bank_list_update().
+
+    Returns:
+        str | None: An error message describing the first failure
+        encountered (validation or a database step), or None if the
+        update completed successfully.
+    """
+    if (error_info := validate_bank_data(content)) is not None:
+        return error_info
+    bd: dict = {}
+    jit = bank_j_iterator(content, bd)
+    error_info = None
+    c = None
+    con = None
+    try:
+        con = b_dbop()
+        c = con.cursor()
+        c.execute("""delete from jorg""")
+        c.execute("""delete from bank""")
+        c.executemany(
+            """insert or replace into jorg values (?,?,?,?,?,?,?,?,?,?,?,?,?,
+               ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", jit)
+        bit = bank_b_iterator(bd)
+        c.executemany("""insert into bank values (?,?,?)""", bit)
+        c.execute("""delete from date_mod""")
+        c.execute(
+            """insert or replace into date_mod values (?,?)""",
+            (1, get_date_today_iso()))
+        con.commit()
+    except Exception as e:
+        # Broader than sqlite3.Error: the executemany() calls above also
+        # drive bank_j_iterator()/bank_b_iterator(), which can raise
+        # plain ValueError/IndexError on unexpected input. Any failure
+        # here must still roll back the transaction, not just DB errors.
+        error_info = str(e)
+        logger.error("An error occurred on bank data update: %s", error_info)
+        if con:
+            con.rollback()
+    finally:
+        if c:
+            c.close()
+        if con:
+            con.close()
+    return error_info
 #-----------------------------------------------------------------------------#
-def bank_update():
-    ret = chk_avail_update()
-    if ret:
-        r, d = bank_list_update()
-        if r:
-            print('uaktualniona lista')
+def bank_list_update() -> str | None:
+    """Updating bank list database with data downloaded from NBP"""
+    response = get_url_response(UPD_URL, timeout=UPD_TIMEOUT)
+    if not response:
+        return "Nie udało się pobrać danych o bankach z serwera NBP"
+    try:
+        content = response.read().decode("cp852")
+    except Exception as e:
+        logger.error("Błąd podczas przetwarzania pobranych danych: %s", str(e))
+        return "Błąd podczas przetwarzania pobranych danych: " + str(e)
+    finally:
+        response.close()
+    return bank_base_update(io.StringIO(content))
+#-----------------------------------------------------------------------------#
+def bank_update() -> None:
+    status, info = chk_avail_update()
+    if status:
+        error_info = bank_list_update()
+        if error_info is None:
+            logger.info("lista została uaktualniona")
         else:
-            print('blad przy aktualizacji', d)
+            logger.error("blad przy aktualizacji: %s", error_info)
     else:
-        print('lista aktualna')
-
-    return
-#-----------------------------------------------------------------------------#
-
-
+        logger.error("błąd podczas sprawdzania aktualizacji: %s", info)
+#------------------------------------------------------------------------------#

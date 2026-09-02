@@ -20,6 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-----------------------------------------------------------------------------#
 import gi
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
                    chk_avail_update, bank_list_update, chk_iban,
@@ -28,7 +29,7 @@ from ibanpl import (sql_get_all_bank_no, sql_get_all_jorg,
 class AppWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
-        self.set_title("IBANpl v1.0")
+        self.set_title("IBANpl v1.1")
         self.set_position(Gtk.WindowPosition.CENTER)
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lab = Gtk.Label()
@@ -135,7 +136,7 @@ class AppWindow(Gtk.Window):
 
     def refr_bank_list(self):
         self.cbox1.remove_all()
-        r, d = sql_get_all_bank_no()
+        d, er = sql_get_all_bank_no()
         for i in d:
             self.cbox1.append_text(str(i[0]))
         self.cbox1.set_active(0)
@@ -143,7 +144,7 @@ class AppWindow(Gtk.Window):
     def refr_jorg_list(self):
         self.cbox2.remove_all()
         ct = self.cbox1.get_active_text()
-        r, d = sql_get_all_jorg(int(ct))
+        d, er = sql_get_all_jorg(int(ct))
         for i in d:
             t = str(i[0])
             while len(t) < 4:
@@ -160,18 +161,19 @@ class AppWindow(Gtk.Window):
             accno = acc1 + acc2
             self.iban_corr.set_text('')
 
-        r, d1, d2, er = sql_get_bank_info_frmt(accno)
-        if r:
-            if d1: # bank info
-                for i, e in enumerate(self.lab_list1, start=1):
-                    e.set_text(d1[i])
-            else:
-                self.clear_fields_bank()
-            if d2: # jorg info
-                for i, e in enumerate(self.lab_list2):
-                    e.set_text(str(d2[i]))
-            else:
-                self.clear_fields_jorg()
+        d1, d2, er = sql_get_bank_info_frmt(accno)
+        if er is not None:
+            return
+        if d1: # bank info
+            for i, e in enumerate(self.lab_list1, start=1):
+                e.set_text(d1[i])
+        else:
+            self.clear_fields_bank()
+        if d2: # jorg info
+            for i, e in enumerate(self.lab_list2):
+                e.set_text(str(d2[i]))
+        else:
+            self.clear_fields_jorg()
 
     def clear_fields_bank(self):
         """Clears bank data fields"""
@@ -185,28 +187,20 @@ class AppWindow(Gtk.Window):
 
     def bank_list_update(self, widget):
         """Updating bank data information"""
-        r, oldd, newd = chk_avail_update()
-        if not r:
-            infodial(
-                self,
-                'Nie potrzeba aktualizacji,\n'
-                'informacje o bankach z dnia\n' +
-                oldd +
-                '\nsą aktualne.')
-        elif questdial(
-                self,
-                'Do obecnych danych banków z dnia\n' + oldd +
-                '\nDostępne są aktualizacje z dnia\n' + newd +
-                '\nCzy mają zostać zainstalowane ?'):
-            r, d = bank_list_update()
-            if r:
+        status, message = chk_avail_update()
+        if not status:
+            infodial(self, message)
+        elif questdial(self, message):
+            error_info = bank_list_update()
+            if error_info is None:
                 infodial(
                     self,
                     'Informacje o bankach zostały pomyślnie uaktualnione.')
             else:
                 infodial(
                     self,
-                    'Nie udało się zaktualizować informacji o bankach:\n' + d)
+                    'Nie udało się zaktualizować informacji o bankach:\n' +
+                    error_info)
 
 #-----------------------------------------------------------------------------#
 def questdial(widget, t):
