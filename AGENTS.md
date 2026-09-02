@@ -30,7 +30,7 @@ GTK+ 3 desktop app (Python 3) that validates Polish IBAN account numbers and sho
 - Catalog files: `locale/ibanpl.pot` (template), `locale/en/LC_MESSAGES/ibanpl.po` (English source) and the compiled `ibanpl.mo`. **Both `.po` and `.mo` are committed** (no build system, so `./iban` stays zero-step).
 - After changing any `_()` string: regenerate the template and merge it into the `.po`, translate, recompile:
   ```
-  xgettext --language=Python --keyword=_ --from-code=UTF-8 --package-name=IBANpl --package-version=1.1 -o locale/ibanpl.pot iban.py ibanpl.py
+  xgettext --language=Python --keyword=_ --from-code=UTF-8 --package-name=IBANpl --package-version=2.0.0 -o locale/ibanpl.pot iban.py ibanpl.py
   msgmerge -U locale/en/LC_MESSAGES/ibanpl.po locale/ibanpl.pot
   msgfmt --check -o locale/en/LC_MESSAGES/ibanpl.mo locale/en/LC_MESSAGES/ibanpl.po
   ```

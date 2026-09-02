@@ -6,9 +6,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: IBANpl 1.1\n"
-"Report-Msgid-Bugs-To: https://github.com/anomalyco/opencode/issues\n"
-"POT-Creation-Date: 2026-09-02 12:00+0200\n"
+"Project-Id-Version: IBANpl 2.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-02 12:31+0200\n"
 "PO-Revision-Date: 2026-09-02 12:00+0200\n"
 "Last-Translator: Michal Babik\n"
 "Language-Team: English\n"

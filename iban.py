@@ -32,7 +32,7 @@ _ = gettext.translation("ibanpl", localedir="locale", fallback=True).gettext
 class AppWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self)
-        self.set_title("IBANpl v1.1")
+        self.set_title("IBANpl v2.0.0")
         self.set_position(Gtk.WindowPosition.CENTER)
         vbox1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         lab = Gtk.Label()
