@@ -1,7 +1,12 @@
 # IBANpl
 
+[![Release](https://img.shields.io/github/v/release/mi-bb/IBANpl?include_prereleases&style=)](https://github.com/mi-bb/IBANpl/releases/)
+![Licence](https://img.shields.io/github/license/mi-bb/IBANpl)
+![Last Commit](https://img.shields.io/github/last-commit/mi-bb/IBANpl)
+
 Informacja o polskich bankach na podstawie numeru konta IBAN
- Polish bank information based on the IBAN account number
+
+Polish bank information based on the IBAN account number
 
 Program oraz funkcje pozwalające na sprawdzenie poprawności numeru
 konta oraz wyświetlenie informacji o polskich bankach
@@ -13,6 +18,7 @@ Polish banks (bank name, address and other data) based on the IBAN
 account number.
 
 Program korzysta z bazy danych SQLite.
+
 The program uses an SQLite database.
 
 <img src="other/ibanpl_en.png" alt="Screenshot 1" style="height: 450px;"><img src="other/ibanpl_pl.png" alt="Screenshot 2" style="height: 450px;">
@@ -50,20 +56,6 @@ Polish is the source language; an English translation is provided in
 `locale/en/`. Bank and branch data from the NBP eWIB service is always
 in Polish.
 
-# Copyright and license
+## License
 
-Copyright (C) 2016-2026 Michal Babik
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+This project is licensed under the GPL-3.0 License — see [COPYING](COPYING) for details.
